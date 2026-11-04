@@ -1,0 +1,1 @@
+# codice-interazione-persona-calcolatore
