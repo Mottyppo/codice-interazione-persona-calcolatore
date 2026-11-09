@@ -17,6 +17,8 @@ class CalendarioController extends Controller
      */
     public function index(Request $request, ConflittoService $conflitti)
     {
+        $request->validate(['sessione' => ['nullable', 'integer', 'exists:sessioni,id']]);
+
         $user = $request->user();
         $isAdmin = $user->hasRole('amministratore');
 
