@@ -1,0 +1,518 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Appello;
+use App\Models\Configurazione;
+use App\Models\Insegnamento;
+use App\Models\Sessione;
+use App\Services\ConflittoService;
+use App\Support\CalendarioFestivita;
+use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+
+class AppelloController extends Controller
+{
+    public function index(Request $request, ConflittoService $conflitti)
+    {
+        $user = $request->user();
+
+        // L'amministratore vede tutti gli appelli, il docente quelli dei propri
+        // insegnamenti (compresi quelli inseriti da un co-titolare).
+        if ($user->hasRole('amministratore')) {
+            $appelli = Appello::with(['insegnamento.corsoStudio', 'sessione.periodiInserimento', 'docente'])
+                ->orderBy('data')->orderBy('ora_inizio')->get();
+            // L'admin vede tutti gli appelli: l'insieme mostrato è già l'universo.
+            $idConflitto = $conflitti->idInConflitto($appelli);
+        } else {
+            $appelli = Appello::with(['insegnamento.corsoStudio', 'sessione.periodiInserimento', 'docente'])
+                ->visibiliAlDocente($user)
+                ->orderBy('data')->orderBy('ora_inizio')->get();
+            // I conflitti vanno cercati contro TUTTI gli appelli, non solo i
+            // propri: un appello può confliggere con quello di un altro docente
+            // (es. stessa aula). Si confronta quindi con l'insieme completo.
+            $universo = Appello::with('insegnamento')->get();
+            $idConflitto = $conflitti->idInConflitto($appelli, $universo);
+        }
+
+        // Filtro opzionale "solo conflitti": il conteggio resta sul totale,
+        // così il pulsante mostra quanti appelli sono in conflitto in tutto.
+        $soloConflitti = $request->boolean('conflitti');
+        $appelliMostrati = $soloConflitti
+            ? $appelli->whereIn('id', $idConflitto)->values()
+            : $appelli;
+
+        return view('appelli.index', [
+            'appelli' => $appelliMostrati,
+            'isAdmin' => $user->hasRole('amministratore'),
+            'idConflitto' => $idConflitto,
+            'idModificabili' => $this->idModificabili($appelliMostrati, $user),
+            'soloConflitti' => $soloConflitti,
+            'totaleConflitti' => $idConflitto->count(),
+        ]);
+    }
+
+    public function create(Request $request)
+    {
+        $appello = new Appello();
+
+        // Pre-compilazione opzionale da link (es. promemoria in dashboard): si
+        // impostano solo insegnamento e sessione. Se un id non rientra tra
+        // quelli consentiti, il form semplicemente non lo pre-seleziona.
+        if ($request->filled('insegnamento')) {
+            $appello->insegnamento_id = (int) $request->query('insegnamento');
+        }
+        if ($request->filled('sessione')) {
+            $appello->sessione_id = (int) $request->query('sessione');
+        }
+
+        return view('appelli.create', [
+            'appello' => $appello,
+            'insegnamenti' => $this->insegnamentiDisponibili($request->user()),
+            'sessioni' => $this->sessioniDisponibili($request->user()),
+            'giorniPreappello' => $this->giorniPreappello(),
+            'festivita' => $this->festivita(),
+        ]);
+    }
+
+    public function store(Request $request, ConflittoService $conflitti)
+    {
+        $user = $request->user();
+        $dati = $this->validateRequest($request, $user);
+
+        if ($errore = $this->violazioneGiorno($dati['data'])) {
+            return back()->withInput()->withErrors($errore);
+        }
+
+        $sessione = Sessione::findOrFail($dati['sessione_id']);
+
+        if ($errore = $this->violazioniSessione($sessione, $dati['data'], $user)) {
+            return back()->withInput()->withErrors($errore);
+        }
+
+        $insegnamento = Insegnamento::with('corsoStudio')->findOrFail($dati['insegnamento_id']);
+        $aula = $dati['aula'] ?? null;
+
+        $trovati = $conflitti->trovaConflitti(
+            $insegnamento->id, $dati['data'], $dati['ora_inizio'], $dati['ora_fine'], $aula
+        );
+
+        if ($trovati->isNotEmpty() && $this->modalitaConflitto() === 'blocco') {
+            return back()->withInput()->withErrors(['conflitto' => $this->messaggioConflitto($trovati, $insegnamento, $aula)]);
+        }
+
+        $appello = new Appello($dati);
+        $appello->user_id = $user->id;
+        $appello->save();
+
+        return redirect()->route('appelli.index')
+            ->with('success', 'Appello creato.')
+            ->with($trovati->isNotEmpty() ? ['warning' => $this->messaggioConflitto($trovati, $insegnamento, $aula)] : []);
+    }
+
+    public function edit(Request $request, Appello $appello)
+    {
+        $this->autorizza($request->user(), $appello);
+
+        if ($blocco = $this->bloccoFinestraChiusa($request->user(), $appello)) {
+            return $blocco;
+        }
+
+        return view('appelli.edit', [
+            'appello' => $appello,
+            'insegnamenti' => $this->insegnamentiDisponibili($request->user()),
+            'sessioni' => $this->sessioniDisponibili($request->user(), $appello->sessione_id),
+            'giorniPreappello' => $this->giorniPreappello(),
+            'festivita' => $this->festivita(),
+        ]);
+    }
+
+    public function update(Request $request, Appello $appello, ConflittoService $conflitti)
+    {
+        $user = $request->user();
+        $this->autorizza($user, $appello);
+
+        $dati = $this->validateRequest($request, $user);
+
+        if ($errore = $this->violazioneGiorno($dati['data'])) {
+            return back()->withInput()->withErrors($errore);
+        }
+
+        $sessione = Sessione::findOrFail($dati['sessione_id']);
+
+        if ($errore = $this->violazioniSessione($sessione, $dati['data'], $user)) {
+            return back()->withInput()->withErrors($errore);
+        }
+
+        $insegnamento = Insegnamento::with('corsoStudio')->findOrFail($dati['insegnamento_id']);
+        $aula = $dati['aula'] ?? null;
+
+        $trovati = $conflitti->trovaConflitti(
+            $insegnamento->id, $dati['data'], $dati['ora_inizio'], $dati['ora_fine'], $aula, $appello->id
+        );
+
+        if ($trovati->isNotEmpty() && $this->modalitaConflitto() === 'blocco') {
+            return back()->withInput()->withErrors(['conflitto' => $this->messaggioConflitto($trovati, $insegnamento, $aula)]);
+        }
+
+        $appello->update($dati);
+
+        return redirect()->route('appelli.index')
+            ->with('success', 'Appello aggiornato.')
+            ->with($trovati->isNotEmpty() ? ['warning' => $this->messaggioConflitto($trovati, $insegnamento, $aula)] : []);
+    }
+
+    /**
+     * Endpoint AJAX: verifica in tempo reale la presenza di conflitti.
+     */
+    public function verificaConflitto(Request $request, ConflittoService $conflitti)
+    {
+        // Solo gli insegnamenti consentiti all'utente (come per store/update):
+        // evita che un docente sondi i conflitti di insegnamenti non suoi.
+        $insegnamentiPermessi = $this->insegnamentiDisponibili($request->user())->pluck('id')->all();
+
+        $dati = $request->validate([
+            'insegnamento_id' => ['required', 'integer', Rule::in($insegnamentiPermessi)],
+            'data' => ['required', 'date'],
+            'ora_inizio' => ['required', 'date_format:H:i'],
+            'ora_fine' => ['required', 'date_format:H:i', 'after:ora_inizio'],
+            'aula' => ['nullable', 'string', 'max:255'],
+            'appello_id' => ['nullable', 'integer'],
+        ]);
+
+        $insegnamento = Insegnamento::with('corsoStudio')->find($dati['insegnamento_id']);
+
+        if ($insegnamento === null) {
+            return response()->json(['conflitto' => false, 'numero' => 0, 'dettagli' => []]);
+        }
+
+        $aula = $dati['aula'] ?? null;
+
+        $trovati = $conflitti->trovaConflitti(
+            $insegnamento->id,
+            $dati['data'],
+            $dati['ora_inizio'],
+            $dati['ora_fine'],
+            $aula,
+            isset($dati['appello_id']) ? (int) $dati['appello_id'] : null
+        );
+
+        // Visibilità differenziata: il docente vede solo anno, fascia e motivo,
+        // l'amministratore vede anche insegnamento, docente e aula.
+        $isAdmin = $request->user()->hasRole('amministratore');
+
+        $dettagli = $trovati->map(function (Appello $a) use ($isAdmin, $insegnamento, $aula) {
+            $fascia = Str::substr($a->ora_inizio, 0, 5) . '–' . Str::substr($a->ora_fine, 0, 5);
+
+            $dettaglio = [
+                'anno' => $a->insegnamento->anno_frequenza,
+                'orario' => $fascia,
+                'motivi' => $this->motiviConflitto($a, $insegnamento, $aula),
+            ];
+
+            if ($isAdmin) {
+                $dettaglio['insegnamento'] = $a->insegnamento->nome;
+                $dettaglio['docente'] = $a->docente->name;
+                $dettaglio['aula'] = $a->aula;
+            }
+
+            return $dettaglio;
+        })->values();
+
+        return response()->json([
+            'conflitto' => $trovati->isNotEmpty(),
+            'numero' => $trovati->count(),
+            'dettagli' => $dettagli,
+        ]);
+    }
+
+    public function destroy(Request $request, Appello $appello)
+    {
+        $this->autorizza($request->user(), $appello);
+
+        if ($blocco = $this->bloccoFinestraChiusa($request->user(), $appello)) {
+            return $blocco;
+        }
+
+        $appello->delete();
+
+        return redirect()->route('appelli.index')->with('success', 'Appello eliminato.');
+    }
+
+    /**
+     * Insegnamenti selezionabili: tutti per l'admin, solo i propri per il docente.
+     */
+    private function insegnamentiDisponibili($user)
+    {
+        $query = $user->hasRole('amministratore')
+            ? Insegnamento::query()
+            : $user->insegnamenti();
+
+        return $query->with('corsoStudio')->orderBy('nome')->get();
+    }
+
+    /**
+     * Sessioni selezionabili: tutte per l'admin, solo quelle con finestra di
+     * inserimento aperta per il docente. In modifica si include comunque la
+     * sessione corrente dell'appello, così resta selezionata nel form.
+     */
+    private function sessioniDisponibili($user, ?int $includiSessioneId = null)
+    {
+        $query = $user->hasRole('amministratore')
+            ? Sessione::query()
+            : Sessione::conFinestraAperta();
+
+        $sessioni = $query->orderByDesc('data_inizio')->get();
+
+        if ($includiSessioneId !== null && ! $sessioni->contains('id', $includiSessioneId)) {
+            $corrente = Sessione::find($includiSessioneId);
+            if ($corrente !== null) {
+                $sessioni->prepend($corrente);
+            }
+        }
+
+        return $sessioni;
+    }
+
+    /**
+     * Verifica che l'utente possa gestire questo appello: l'admin sempre, il
+     * docente solo se è titolare dell'insegnamento. La proprietà segue la
+     * titolarità, non chi ha creato l'appello: un docente rimosso dall'incarico
+     * perde l'accesso anche agli appelli che aveva inserito di persona.
+     */
+    private function autorizza($user, Appello $appello): void
+    {
+        if ($user->hasRole('amministratore')) {
+            return;
+        }
+
+        $titolare = $user->insegnamenti()->whereKey($appello->insegnamento_id)->exists();
+
+        if (! $titolare) {
+            abort(403);
+        }
+    }
+
+    /**
+     * Regole di validazione comuni a creazione e modifica.
+     */
+    private function validateRequest(Request $request, $user): array
+    {
+        $insegnamentiPermessi = $this->insegnamentiDisponibili($user)->pluck('id')->all();
+
+        return $request->validate([
+            'insegnamento_id' => ['required', Rule::in($insegnamentiPermessi)],
+            'sessione_id' => ['required', 'exists:sessioni,id'],
+            'data' => ['required', 'date', 'after_or_equal:today'],
+            'ora_inizio' => ['required', 'date_format:H:i', 'after_or_equal:08:00'],
+            'ora_fine' => ['required', 'date_format:H:i', 'after:ora_inizio', 'before_or_equal:18:00'],
+            'aula' => ['nullable', 'string', 'max:255'],
+            'note' => ['nullable', 'string', 'max:1000'],
+        ], [
+            'insegnamento_id.in' => 'Seleziona un insegnamento tra quelli a te assegnati.',
+            'data.after_or_equal' => 'Non è possibile fissare un appello in una data già passata.',
+            'ora_inizio.after_or_equal' => 'Un appello non può iniziare prima delle 08:00.',
+            'ora_fine.before_or_equal' => 'Un appello non può terminare dopo le 18:00.',
+        ], [
+            'insegnamento_id' => 'insegnamento',
+            'sessione_id' => 'sessione',
+            'ora_inizio' => 'ora di inizio',
+            'ora_fine' => 'ora di fine',
+        ]);
+    }
+
+    /**
+     * Controlla i vincoli legati alla sessione: la data deve cadere nel periodo
+     * della sessione e, per i docenti, la finestra di inserimento deve essere aperta.
+     *
+     * @return array<string, string>|null  Errori da mostrare, oppure null se tutto è valido.
+     */
+    private function violazioniSessione(Sessione $sessione, string $data, $user): ?array
+    {
+        $giorno = Carbon::parse($data);
+
+        // La data può anticipare l'inizio sessione fino al margine "preappello",
+        // così le date d'esame si possono pubblicare in anticipo. Il limite
+        // superiore resta la fine della sessione.
+        $dataMinima = $sessione->data_inizio->copy()->subDays($this->giorniPreappello());
+
+        if ($giorno->lt($dataMinima) || $giorno->gt($sessione->data_fine)) {
+            return ['data' => 'La data dell\'appello deve cadere tra il '
+                . $dataMinima->format('d/m/Y') . ' e il ' . $sessione->data_fine->format('d/m/Y') . '.'];
+        }
+
+        // L'amministratore non è soggetto al vincolo della finestra di inserimento
+        if ($user->hasRole('amministratore')) {
+            return null;
+        }
+
+        if (! $this->finestraAperta($sessione)) {
+            return ['sessione_id' => 'La finestra di inserimento per questa sessione non è attualmente aperta.'];
+        }
+
+        return null;
+    }
+
+    /**
+     * Giorni di anticipo entro cui è ammesso un preappello (data antecedente
+     * l'inizio della sessione). Configurabile dall'admin, default 14.
+     */
+    private function giorniPreappello(): int
+    {
+        return (int) (Configurazione::query()->value('giorni_preappello') ?? 14);
+    }
+
+    /**
+     * Festività italiane dell'anno corrente e dei due successivi, nel formato
+     * 'Y-m-d' => nome, così il form può segnalarle in tempo reale lato client.
+     *
+     * @return array<string, string>
+     */
+    private function festivita(): array
+    {
+        $anno = (int) Carbon::today()->year;
+
+        return CalendarioFestivita::festivitaDellAnno($anno)
+            + CalendarioFestivita::festivitaDellAnno($anno + 1)
+            + CalendarioFestivita::festivitaDellAnno($anno + 2);
+    }
+
+    /**
+     * Id degli appelli che l'utente può ancora modificare/eliminare: tutti per
+     * l'admin, per il docente solo quelli con la finestra di inserimento aperta.
+     * Lavora sui periodi già caricati in memoria, senza query aggiuntive.
+     *
+     * @param  \Illuminate\Support\Collection<int, Appello>  $appelli
+     * @return \Illuminate\Support\Collection<int, int>
+     */
+    private function idModificabili($appelli, $user)
+    {
+        if ($user->hasRole('amministratore')) {
+            return $appelli->pluck('id');
+        }
+
+        $oggi = Carbon::today();
+
+        return $appelli->filter(function (Appello $appello) use ($oggi) {
+            return $appello->sessione !== null
+                && $appello->sessione->periodiInserimento->contains(
+                    fn ($periodo) => $periodo->data_inizio->lte($oggi) && $periodo->data_fine->gte($oggi)
+                );
+        })->pluck('id');
+    }
+
+    /**
+     * Indica se la finestra di inserimento della sessione è aperta oggi.
+     */
+    private function finestraAperta(Sessione $sessione): bool
+    {
+        $oggi = Carbon::today();
+
+        return $sessione->periodiInserimento()
+            ->whereDate('data_inizio', '<=', $oggi)
+            ->whereDate('data_fine', '>=', $oggi)
+            ->exists();
+    }
+
+    /**
+     * Il docente può modificare ed eliminare un appello solo finché la finestra
+     * di inserimento della sua sessione è aperta; l'admin non è soggetto al
+     * vincolo. Restituisce un redirect di blocco oppure null se l'operazione è
+     * consentita.
+     */
+    private function bloccoFinestraChiusa($user, Appello $appello)
+    {
+        if ($user->hasRole('amministratore')) {
+            return null;
+        }
+
+        if ($appello->sessione !== null && ! $this->finestraAperta($appello->sessione)) {
+            return redirect()->route('appelli.index')->with('error',
+                'La finestra di inserimento per questa sessione è chiusa: non puoi più modificare o eliminare questo appello.');
+        }
+
+        return null;
+    }
+
+    /**
+     * Verifica che la data dell'appello non cada nel weekend o in una festività.
+     *
+     * @return array<string, string>|null  Errore da mostrare, oppure null se valida.
+     */
+    private function violazioneGiorno(string $data): ?array
+    {
+        $giorno = Carbon::parse($data);
+
+        if ($giorno->isWeekend()) {
+            return ['data' => 'Non è possibile fissare un appello di sabato o domenica.'];
+        }
+
+        if ($festa = CalendarioFestivita::nomeFestivita($giorno)) {
+            return ['data' => "Non è possibile fissare un appello in un giorno festivo ({$festa})."];
+        }
+
+        return null;
+    }
+
+    /**
+     * Modalità di gestione dei conflitti impostata dall'amministratore.
+     */
+    private function modalitaConflitto(): string
+    {
+        return Configurazione::query()->value('modalita_conflitto') ?? 'blocco';
+    }
+
+    /**
+     * Determina per quali motivi un appello esistente è in conflitto con quello
+     * che si sta inserendo: "studenti" (stesso corso e anno) e/o "aula".
+     *
+     * @return array<int, string>
+     */
+    private function motiviConflitto(Appello $altro, Insegnamento $nuovo, ?string $aula): array
+    {
+        $motivi = [];
+
+        if ((int) $altro->insegnamento->anno_frequenza === (int) $nuovo->anno_frequenza
+            && (int) $altro->insegnamento->corso_studio_id === (int) $nuovo->corso_studio_id) {
+            $motivi[] = 'studenti';
+        }
+
+        if ($aula !== null && trim($aula) !== ''
+            && mb_strtolower(trim((string) $altro->aula)) === mb_strtolower(trim($aula))) {
+            $motivi[] = 'aula';
+        }
+
+        return $motivi;
+    }
+
+    /**
+     * Messaggio riassuntivo dei conflitti rilevati, distinguendo tra conflitto
+     * sugli studenti (stesso corso e anno) e conflitto sull'aula.
+     *
+     * @param  \Illuminate\Support\Collection<int, Appello>  $conflitti
+     */
+    private function messaggioConflitto($conflitti, Insegnamento $insegnamento, ?string $aula): string
+    {
+        $studenti = $conflitti->filter(
+            fn (Appello $a) => in_array('studenti', $this->motiviConflitto($a, $insegnamento, $aula), true)
+        );
+        $perAula = $conflitti->filter(
+            fn (Appello $a) => in_array('aula', $this->motiviConflitto($a, $insegnamento, $aula), true)
+        );
+
+        $parti = [];
+
+        if ($studenti->isNotEmpty()) {
+            $parti[] = "{$studenti->count()} appello/i dello stesso anno ({$insegnamento->anno_frequenza}°) "
+                . "del corso «{$insegnamento->corsoStudio->nome}»";
+        }
+
+        if ($perAula->isNotEmpty()) {
+            $parti[] = "{$perAula->count()} appello/i nella stessa aula («" . trim((string) $aula) . "»)";
+        }
+
+        return 'Conflitto con ' . implode(' e con ', $parti) . ' nella stessa data e fascia oraria.';
+    }
+}
