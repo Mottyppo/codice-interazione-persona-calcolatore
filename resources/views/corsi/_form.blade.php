@@ -1,13 +1,11 @@
-<div class="mb-3">
-    <label for="nome" class="form-label">Nome del corso</label>
-    <input type="text" class="form-control @error('nome') is-invalid @enderror" id="nome" name="nome"
-        value="{{ old('nome', $corso->nome) }}" required>
-    @error('nome')
-        <div class="invalid-feedback">{{ $message }}</div>
-    @enderror
+<div class="mb-4">
+    <label for="nome" class="ui-label">Nome del corso</label>
+    <x-ui.input type="text" :invalid="$errors->has('nome')" id="nome" name="nome" maxlength="255"
+        value="{{ \App\Support\FormValue::old('nome', $corso->nome) }}" required />
+    <x-ui.field-error for="nome" />
 </div>
 
-<div class="d-flex gap-2">
-    <button type="submit" class="btn btn-primary">Salva</button>
-    <a href="{{ route('corsi.index') }}" class="btn btn-outline-secondary">Annulla</a>
+<div class="flex gap-2">
+    <x-ui.button variant="primary" type="submit">Salva</x-ui.button>
+    <x-ui.button variant="outline-secondary" href="{{ route('corsi.index') }}">Annulla</x-ui.button>
 </div>

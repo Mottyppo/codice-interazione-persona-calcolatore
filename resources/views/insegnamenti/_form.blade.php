@@ -1,59 +1,51 @@
-<div class="row g-3">
-    <div class="col-md-8">
-        <label for="nome" class="form-label">Nome dell'insegnamento</label>
-        <input type="text" class="form-control @error('nome') is-invalid @enderror" id="nome" name="nome"
-            value="{{ old('nome', $insegnamento->nome) }}" required>
-        @error('nome')
-            <div class="invalid-feedback">{{ $message }}</div>
-        @enderror
+<div class="ui-row ui-gutter-3">
+    <div class="ui-col-md-8">
+        <label for="nome" class="ui-label">Nome dell'insegnamento</label>
+        <x-ui.input type="text" :invalid="$errors->has('nome')" id="nome" name="nome" maxlength="255"
+            value="{{ \App\Support\FormValue::old('nome', $insegnamento->nome) }}" required />
+        <x-ui.field-error for="nome" />
     </div>
 
-    <div class="col-md-4">
-        <label for="anno_frequenza" class="form-label">Anno di frequenza</label>
-        <select class="form-select @error('anno_frequenza') is-invalid @enderror" id="anno_frequenza" name="anno_frequenza" required>
+    <div class="ui-col-md-4">
+        <label for="anno_frequenza" class="ui-label">Anno di frequenza</label>
+        <x-ui.select :invalid="$errors->has('anno_frequenza')" id="anno_frequenza" name="anno_frequenza" required>
             @foreach ([1, 2, 3] as $anno)
-                <option value="{{ $anno }}" @selected((int) old('anno_frequenza', $insegnamento->anno_frequenza) === $anno)>
+                <option value="{{ $anno }}" @selected((int) \App\Support\FormValue::old('anno_frequenza', $insegnamento->anno_frequenza) === $anno)>
                     {{ $anno }}° anno
                 </option>
             @endforeach
-        </select>
-        @error('anno_frequenza')
-            <div class="invalid-feedback">{{ $message }}</div>
-        @enderror
+        </x-ui.select>
+        <x-ui.field-error for="anno_frequenza" />
     </div>
 
-    <div class="col-12">
-        <label for="corso_studio_id" class="form-label">Corso di studio</label>
-        <select class="form-select @error('corso_studio_id') is-invalid @enderror" id="corso_studio_id" name="corso_studio_id" required>
+    <div class="w-full">
+        <label for="corso_studio_id" class="ui-label">Corso di studio</label>
+        <x-ui.select :invalid="$errors->has('corso_studio_id')" id="corso_studio_id" name="corso_studio_id" required>
             <option value="">— Seleziona un corso —</option>
             @foreach ($corsi as $corso)
-                <option value="{{ $corso->id }}" @selected((int) old('corso_studio_id', $insegnamento->corso_studio_id) === $corso->id)>
+                <option value="{{ $corso->id }}" @selected((int) \App\Support\FormValue::old('corso_studio_id', $insegnamento->corso_studio_id) === $corso->id)>
                     {{ $corso->nome }}
                 </option>
             @endforeach
-        </select>
-        @error('corso_studio_id')
-            <div class="invalid-feedback">{{ $message }}</div>
-        @enderror
+        </x-ui.select>
+        <x-ui.field-error for="corso_studio_id" />
     </div>
 
-    <div class="col-12">
-        <label for="docenti" class="form-label">Docenti titolari</label>
-        <select class="form-select @error('docenti') is-invalid @enderror" id="docenti" name="docenti[]" multiple size="5">
+    <div class="w-full">
+        <label for="docenti" class="ui-label">Docenti titolari</label>
+        <x-ui.select :invalid="$errors->has('docenti') || $errors->has('docenti.*')" id="docenti" name="docenti[]" aria-describedby="docenti-help" multiple size="5">
             @foreach ($docenti as $docente)
-                <option value="{{ $docente->id }}" @selected(in_array($docente->id, old('docenti', $docentiSelezionati)))>
+                <option value="{{ $docente->id }}" @selected(in_array($docente->id, (session()->hasOldInput() ? (array) old('docenti', []) : $docentiSelezionati)))>
                     {{ $docente->name }} ({{ $docente->email }})
                 </option>
             @endforeach
-        </select>
-        <div class="form-text">Tieni premuto Ctrl (Cmd su Mac) per selezionare più docenti.</div>
-        @error('docenti')
-            <div class="invalid-feedback d-block">{{ $message }}</div>
-        @enderror
+        </x-ui.select>
+        <div id="docenti-help" class="ui-field-help">Tieni premuto Ctrl (Cmd su Mac) per selezionare più docenti.</div>
+        <x-ui.field-error for="docenti" />
     </div>
 </div>
 
-<div class="d-flex gap-2 mt-4">
-    <button type="submit" class="btn btn-primary">Salva</button>
-    <a href="{{ route('insegnamenti.index') }}" class="btn btn-outline-secondary">Annulla</a>
+<div class="flex gap-2 mt-6">
+    <x-ui.button variant="primary" type="submit">Salva</x-ui.button>
+    <x-ui.button variant="outline-secondary" href="{{ route('insegnamenti.index') }}">Annulla</x-ui.button>
 </div>

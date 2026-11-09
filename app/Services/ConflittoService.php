@@ -9,6 +9,30 @@ use Illuminate\Support\Collection;
 class ConflittoService
 {
     /**
+     * Coppie di appelli con sovrapposizione per gli studenti. Il confronto prima
+     * e dopo una modifica della struttura distingue i nuovi conflitti da quelli
+     * già accettati, senza introdurre vincoli sugli esami in modalità avviso.
+     *
+     * @return array<int, string>
+     */
+    public function coppieConflittoStudenti(): array
+    {
+        $appelli = Appello::with('insegnamento')->orderBy('id')->get();
+        $coppie = [];
+        foreach ($appelli as $indice => $a) {
+            foreach ($appelli->slice($indice + 1) as $b) {
+                if ((int) $a->insegnamento->corso_studio_id === (int) $b->insegnamento->corso_studio_id
+                    && (int) $a->insegnamento->anno_frequenza === (int) $b->insegnamento->anno_frequenza
+                    && $this->sonoInConflitto($a, $b)) {
+                    $coppie[] = $a->id.':'.$b->id;
+                }
+            }
+        }
+
+        return $coppie;
+    }
+
+    /**
      * Trova gli appelli in conflitto con quello descritto dai parametri.
      *
      * Due appelli sono in conflitto quando cadono nella stessa data, le fasce
@@ -17,8 +41,8 @@ class ConflittoService
      *    (gli studenti coinvolti sarebbero gli stessi);
      *  - conflitto "aula": la stessa aula risulterebbe occupata due volte.
      *
-     * @param  string|null  $aula       Aula del nuovo appello (per il conflitto sull'aula).
-     * @param  int|null      $escludiId  Id di un appello da escludere (utile in modifica).
+     * @param  string|null  $aula  Aula del nuovo appello (per il conflitto sull'aula).
+     * @param  int|null  $escludiId  Id di un appello da escludere (utile in modifica).
      * @return Collection<int, Appello>
      */
     public function trovaConflitti(
@@ -43,19 +67,15 @@ class ConflittoService
             // Sovrapposizione delle fasce: inizio < fine_altro AND fine > inizio_altro
             ->where('ora_inizio', '<', $oraFine)
             ->where('ora_fine', '>', $oraInizio)
-            ->where(function ($q) use ($insegnamento, $aula) {
-                // Conflitto "studenti": stesso corso e stesso anno
-                $q->whereHas('insegnamento', fn ($s) => $s
-                    ->where('anno_frequenza', $insegnamento->anno_frequenza)
-                    ->where('corso_studio_id', $insegnamento->corso_studio_id));
-
-                // Conflitto "aula": stessa aula (confronto senza spazi/maiuscole)
-                if ($aula !== '') {
-                    $q->orWhereRaw('LOWER(TRIM(aula)) = ?', [mb_strtolower($aula)]);
-                }
-            })
             ->orderBy('ora_inizio')
-            ->get();
+            ->get()
+            // La normalizzazione deve coincidere con elenco e calendario.
+            // LOWER/TRIM SQL dipendono da motore e collation (SQLite non
+            // converte le maiuscole accentate e TRIM non rimuove i tab).
+            ->filter(fn (Appello $altro) => ((int) $altro->insegnamento->anno_frequenza === (int) $insegnamento->anno_frequenza
+                    && (int) $altro->insegnamento->corso_studio_id === (int) $insegnamento->corso_studio_id)
+                || ($aula !== '' && mb_strtolower(trim((string) $altro->aula)) === mb_strtolower($aula))
+            )->values();
     }
 
     /**
@@ -71,9 +91,9 @@ class ConflittoService
      *
      * Richiede che la relazione `insegnamento` sia già caricata su entrambi.
      *
-     * @param  Collection<int, Appello>       $appelli  appelli da valutare
+     * @param  Collection<int, Appello>  $appelli  appelli da valutare
      * @param  Collection<int, Appello>|null  $universo  insieme contro cui confrontare
-     * @return Collection<int, int>  id degli appelli in conflitto
+     * @return Collection<int, int> id degli appelli in conflitto
      */
     public function idInConflitto(Collection $appelli, ?Collection $universo = null): Collection
     {

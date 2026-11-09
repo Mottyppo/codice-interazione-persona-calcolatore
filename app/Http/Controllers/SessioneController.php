@@ -2,10 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Configurazione;
 use App\Models\Sessione;
-use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Validation\ValidationException;
 
 class SessioneController extends Controller
 {
@@ -20,7 +21,7 @@ class SessioneController extends Controller
 
     public function create()
     {
-        return view('sessioni.create', ['sessione' => new Sessione()]);
+        return view('sessioni.create', ['sessione' => new Sessione]);
     }
 
     public function store(Request $request)
@@ -46,7 +47,7 @@ class SessioneController extends Controller
 
     public function update(Request $request, Sessione $sessione)
     {
-        $dati = $this->validateRequest($request);
+        $dati = $this->validateRequest($request, $sessione);
 
         $sessione->update($dati);
 
@@ -68,37 +69,47 @@ class SessioneController extends Controller
     /**
      * Regole di validazione condivise tra creazione e modifica.
      */
-    private function validateRequest(Request $request): array
+    private function validateRequest(Request $request, ?Sessione $sessione = null): array
     {
-        return $request->validate([
+        // Prima si controlla il formato di entrambi gli estremi: i confronti
+        // successivi non devono mai interpretare array o date malformate.
+        $dati = $request->validate([
             'nome' => 'required|string|max:255',
-            'data_inizio' => ['required', 'date', 'after:today'],
-            'data_fine' => [
-                'required',
-                'date',
-                'after_or_equal:data_inizio',
-                // La durata si conta con gli estremi inclusi: dal 1 al 7 è una settimana.
-                function (string $attributo, mixed $valore, Closure $fail) use ($request) {
-                    $inizio = $request->input('data_inizio');
-
-                    if (! $inizio || ! strtotime($inizio)) {
-                        return; // data di inizio mancante o non valida: la segnala la sua regola
-                    }
-
-                    $minima = Carbon::parse($inizio)->addDays(self::DURATA_MINIMA_GIORNI - 1);
-
-                    if (Carbon::parse($valore)->lt($minima)) {
-                        $fail('La sessione deve durare almeno una settimana: la data di fine non può precedere il '
-                            . $minima->format('d/m/Y') . '.');
-                    }
-                },
-            ],
+            'data_inizio' => ['bail', 'required', 'date_format:Y-m-d', 'after:today'],
+            'data_fine' => ['bail', 'required', 'date_format:Y-m-d'],
         ], [
             'data_inizio.after' => 'La sessione deve iniziare da domani in poi.',
-            'data_fine.after_or_equal' => 'La data di fine non può precedere quella di inizio.',
         ], [
             'data_inizio' => 'data di inizio',
             'data_fine' => 'data di fine',
         ]);
+
+        $inizio = Carbon::parse($dati['data_inizio']);
+        $fine = Carbon::parse($dati['data_fine']);
+        $minima = $inizio->copy()->addDays(self::DURATA_MINIMA_GIORNI - 1);
+        $errori = [];
+        if ($fine->lt($minima)) {
+            $errori['data_fine'] = 'La sessione deve durare almeno una settimana: la data di fine non può precedere il '
+                .$minima->format('d/m/Y').'.';
+        }
+
+        if ($sessione !== null) {
+            $margine = (int) (Configurazione::query()->value('giorni_preappello') ?? 14);
+            if ($sessione->appelli()->whereDate('data', '<', $inizio->copy()->subDays($margine))->exists()) {
+                $errori['data_inizio'] = 'La nuova data di inizio escluderebbe appelli già pianificati, anche considerando i preappelli.';
+            }
+            if ($sessione->appelli()->whereDate('data', '>', $fine)->exists()) {
+                $errori['data_fine'] = 'La nuova data di fine escluderebbe appelli già pianificati.';
+            }
+            if ($sessione->periodiInserimento()->whereDate('data_fine', '>', $fine)->exists()) {
+                $errori['data_fine'] = 'La nuova data di fine precederebbe la chiusura di una finestra di inserimento esistente.';
+            }
+        }
+
+        if ($errori !== []) {
+            throw ValidationException::withMessages($errori);
+        }
+
+        return $dati;
     }
 }

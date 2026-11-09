@@ -4,21 +4,21 @@
 @section('heading', "Sessioni d'esame")
 
 @section('breadcrumb')
-    <li class="breadcrumb-item"><a href="{{ route('struttura.index') }}">Struttura didattica</a></li>
-    <li class="breadcrumb-item active" aria-current="page">Sessioni</li>
+    <li class="ui-breadcrumb-item"><a href="{{ route('struttura.index') }}">Struttura didattica</a></li>
+    <li class="ui-breadcrumb-item is-active" aria-current="page">Sessioni</li>
 @endsection
 
 @section('actions')
-    <a href="{{ route('sessioni.create') }}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Nuova sessione</a>
+    <x-ui.button variant="primary" href="{{ route('sessioni.create') }}"><x-ui.icon name="plus" /> Nuova sessione</x-ui.button>
 @endsection
 
 @section('content')
-    <div class="card">
-        <div class="card-body p-0">
+    <x-ui.card>
+        <x-ui.card-content class="p-0">
             @if ($sessioni->isEmpty())
-                <p class="text-muted m-3">Nessuna sessione registrata.</p>
+                <p class="text-muted-foreground m-4">Nessuna sessione registrata.</p>
             @else
-                <table class="table table-hover align-middle mb-0">
+                <x-ui.table class="ui-table-hover align-middle mb-0">
                     <thead>
                         <tr>
                             <th>Nome</th>
@@ -36,12 +36,12 @@
                                 <td class="text-center">{{ $sessione->periodi_inserimento_count }}</td>
                                 <td class="text-center">{{ $sessione->appelli_count }}</td>
                                 <td class="text-end">
-                                    <a href="{{ route('sessioni.show', $sessione) }}" class="btn btn-sm btn-outline-primary">
-                                        <i class="bi bi-eye"></i> Dettagli
-                                    </a>
-                                    <a href="{{ route('sessioni.edit', $sessione) }}" class="btn btn-sm btn-outline-secondary">
-                                        <i class="bi bi-pencil"></i> Modifica
-                                    </a>
+                                    <x-ui.button variant="outline-primary" size="sm" href="{{ route('sessioni.show', $sessione) }}">
+                                        <x-ui.icon name="eye" /> Dettagli
+                                    </x-ui.button>
+                                    <x-ui.button variant="outline-secondary" size="sm" href="{{ route('sessioni.edit', $sessione) }}">
+                                        <x-ui.icon name="pencil" /> Modifica
+                                    </x-ui.button>
                                     @php
                                         $parti = [];
                                         if ($sessione->periodi_inserimento_count > 0) {
@@ -61,8 +61,8 @@
                             </tr>
                         @endforeach
                     </tbody>
-                </table>
+                </x-ui.table>
             @endif
-        </div>
-    </div>
+        </x-ui.card-content>
+    </x-ui.card>
 @endsection

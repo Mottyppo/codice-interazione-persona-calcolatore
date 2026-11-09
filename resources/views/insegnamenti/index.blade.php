@@ -4,12 +4,12 @@
 @section('heading', 'Insegnamenti')
 
 @section('breadcrumb')
-    <li class="breadcrumb-item"><a href="{{ route('struttura.index') }}">Struttura didattica</a></li>
-    <li class="breadcrumb-item active" aria-current="page">Insegnamenti</li>
+    <li class="ui-breadcrumb-item"><a href="{{ route('struttura.index') }}">Struttura didattica</a></li>
+    <li class="ui-breadcrumb-item is-active" aria-current="page">Insegnamenti</li>
 @endsection
 
 @section('actions')
-    <a href="{{ route('insegnamenti.create') }}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Nuovo insegnamento</a>
+    <x-ui.button variant="primary" href="{{ route('insegnamenti.create') }}"><x-ui.icon name="plus" /> Nuovo insegnamento</x-ui.button>
 @endsection
 
 @section('content')
@@ -18,46 +18,46 @@
     @endphp
 
     {{-- Barra dei filtri (invio in GET, auto-applicazione al cambio) --}}
-    <form method="GET" action="{{ route('insegnamenti.index') }}" class="row g-2 align-items-end mb-3">
-        <div class="col-sm-4">
-            <label for="corso" class="form-label">Corso di studio</label>
-            <select name="corso" id="corso" class="form-select" onchange="this.form.submit()">
+    <form method="GET" action="{{ route('insegnamenti.index') }}" class="ui-row ui-gutter-2 items-end mb-4">
+        <div class="ui-col-sm-4">
+            <label for="corso" class="ui-label">Corso di studio</label>
+            <x-ui.select name="corso" id="corso"  onchange="this.form.submit()">
                 <option value="">Tutti i corsi</option>
                 @foreach ($corsi as $corso)
                     <option value="{{ $corso->id }}" @selected((int) $filtri['corso'] === $corso->id)>{{ $corso->nome }}</option>
                 @endforeach
-            </select>
+            </x-ui.select>
         </div>
-        <div class="col-sm-2">
-            <label for="anno" class="form-label">Anno</label>
-            <select name="anno" id="anno" class="form-select" onchange="this.form.submit()">
+        <div class="ui-col-sm-2">
+            <label for="anno" class="ui-label">Anno</label>
+            <x-ui.select name="anno" id="anno"  onchange="this.form.submit()">
                 <option value="">Tutti</option>
                 @for ($a = 1; $a <= 3; $a++)
                     <option value="{{ $a }}" @selected((int) $filtri['anno'] === $a)>{{ $a }}° anno</option>
                 @endfor
-            </select>
+            </x-ui.select>
         </div>
-        <div class="col-sm-4">
-            <label for="q" class="form-label">Cerca per nome</label>
-            <input type="text" name="q" id="q" class="form-control" value="{{ $filtri['q'] }}"
-                placeholder="Nome insegnamento…" onchange="this.form.submit()">
+        <div class="ui-col-sm-4">
+            <label for="q" class="ui-label">Cerca per nome</label>
+            <x-ui.input type="text" name="q" id="q"  value="{{ $filtri['q'] }}"
+                placeholder="Nome insegnamento…" onchange="this.form.submit()" />
         </div>
-        <div class="col-sm-2 d-flex gap-2">
-            <noscript><button type="submit" class="btn btn-outline-secondary w-100">Filtra</button></noscript>
+        <div class="ui-col-sm-2 flex gap-2">
+            <noscript><x-ui.button variant="outline-secondary" type="submit" class="w-full">Filtra</x-ui.button></noscript>
             @if ($filtriAttivi)
-                <a href="{{ route('insegnamenti.index') }}" class="btn btn-outline-secondary" title="Azzera filtri"><i class="bi bi-x-lg"></i></a>
+                <x-ui.button variant="outline-secondary" href="{{ route('insegnamenti.index') }}"  title="Azzera filtri"><x-ui.icon name="x" /></x-ui.button>
             @endif
         </div>
     </form>
 
-    <div class="card">
-        <div class="card-body p-0">
+    <x-ui.card>
+        <x-ui.card-content class="p-0">
             @if ($insegnamenti->isEmpty())
-                <p class="text-muted m-3">
+                <p class="text-muted-foreground m-4">
                     {{ $filtriAttivi ? 'Nessun insegnamento corrisponde ai filtri.' : 'Nessun insegnamento registrato.' }}
                 </p>
             @else
-                <table class="table table-hover align-middle mb-0">
+                <x-ui.table class="ui-table-hover align-middle mb-0">
                     <thead>
                         <tr>
                             <th>Nome</th>
@@ -72,10 +72,10 @@
                             $gruppi = $insegnamenti->groupBy('corsoStudio.nome')->sortKeys();
                         @endphp
                         @foreach ($gruppi as $nomeCorso => $gruppo)
-                            <tr class="table-light">
+                            <tr class="ui-row-light">
                                 <th colspan="4">
-                                    <i class="bi bi-mortarboard"></i> {{ $nomeCorso }}
-                                    <span class="badge text-bg-secondary ms-1">{{ $gruppo->count() }}</span>
+                                    <x-ui.icon name="graduation-cap" /> {{ $nomeCorso }}
+                                    <x-ui.badge class="ui-tone-secondary ml-1">{{ $gruppo->count() }}</x-ui.badge>
                                 </th>
                             </tr>
                             @foreach ($gruppo as $insegnamento)
@@ -84,15 +84,15 @@
                                     <td class="text-center">{{ $insegnamento->anno_frequenza }}°</td>
                                     <td>
                                         @forelse ($insegnamento->docenti as $docente)
-                                            <span class="badge text-bg-light border">{{ $docente->name }}</span>
+                                            <x-ui.badge class="ui-tone-light border">{{ $docente->name }}</x-ui.badge>
                                         @empty
-                                            <span class="text-muted">—</span>
+                                            <span class="text-muted-foreground">—</span>
                                         @endforelse
                                     </td>
                                     <td class="text-end">
-                                        <a href="{{ route('insegnamenti.edit', $insegnamento) }}" class="btn btn-sm btn-outline-secondary">
-                                            <i class="bi bi-pencil"></i> Modifica
-                                        </a>
+                                        <x-ui.button variant="outline-secondary" size="sm" href="{{ route('insegnamenti.edit', $insegnamento) }}">
+                                            <x-ui.icon name="pencil" /> Modifica
+                                        </x-ui.button>
                                         @php
                                             $msg = "Eliminare l'insegnamento «{$insegnamento->nome}»?";
                                             if ($insegnamento->appelli_count > 0) {
@@ -106,8 +106,8 @@
                             @endforeach
                         @endforeach
                     </tbody>
-                </table>
+                </x-ui.table>
             @endif
-        </div>
-    </div>
+        </x-ui.card-content>
+    </x-ui.card>
 @endsection

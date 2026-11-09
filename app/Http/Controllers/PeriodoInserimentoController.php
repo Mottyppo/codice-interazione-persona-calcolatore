@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\PeriodoInserimento;
 use App\Models\Sessione;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class PeriodoInserimentoController extends Controller
 {
@@ -18,22 +19,28 @@ class PeriodoInserimentoController extends Controller
         // fine della sessione: oltre quella data non avrebbe senso inserire.
         $dati = $request->validate([
             'data_inizio' => [
-                'required', 'date',
-                'before_or_equal:' . $sessione->data_fine->format('Y-m-d'),
+                'bail', 'required', 'date_format:Y-m-d',
+                'before_or_equal:'.$sessione->data_fine->format('Y-m-d'),
             ],
             'data_fine' => [
-                'required', 'date', 'after_or_equal:data_inizio',
-                'before_or_equal:' . $sessione->data_fine->format('Y-m-d'),
+                'bail', 'required', 'date_format:Y-m-d',
+                'before_or_equal:'.$sessione->data_fine->format('Y-m-d'),
             ],
         ], [
             'data_inizio.before_or_equal' => 'La finestra deve aprirsi entro la fine della sessione (entro il '
-                . $sessione->data_fine->format('d/m/Y') . ').',
+                .$sessione->data_fine->format('d/m/Y').').',
             'data_fine.before_or_equal' => 'La finestra deve terminare entro la fine della sessione (entro il '
-                . $sessione->data_fine->format('d/m/Y') . ').',
+                .$sessione->data_fine->format('d/m/Y').').',
         ], [
             'data_inizio' => 'data di inizio',
             'data_fine' => 'data di fine',
         ]);
+
+        if ($dati['data_fine'] < $dati['data_inizio']) {
+            throw ValidationException::withMessages([
+                'data_fine' => 'La data di fine non può precedere quella di inizio.',
+            ]);
+        }
 
         $sessione->periodiInserimento()->create($dati);
 
@@ -45,6 +52,7 @@ class PeriodoInserimentoController extends Controller
      */
     public function destroy(Sessione $sessione, PeriodoInserimento $periodo)
     {
+        abort_unless((int) $periodo->sessione_id === (int) $sessione->id, 404);
         $periodo->delete();
 
         return redirect()->route('sessioni.show', $sessione)->with('success', 'Periodo di inserimento eliminato.');

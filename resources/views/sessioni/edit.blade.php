@@ -4,19 +4,19 @@
 @section('heading', 'Modifica sessione')
 
 @section('breadcrumb')
-    <li class="breadcrumb-item"><a href="{{ route('struttura.index') }}">Struttura didattica</a></li>
-    <li class="breadcrumb-item"><a href="{{ route('sessioni.index') }}">Sessioni</a></li>
-    <li class="breadcrumb-item active" aria-current="page">Modifica</li>
+    <li class="ui-breadcrumb-item"><a href="{{ route('struttura.index') }}">Struttura didattica</a></li>
+    <li class="ui-breadcrumb-item"><a href="{{ route('sessioni.index') }}">Sessioni</a></li>
+    <li class="ui-breadcrumb-item is-active" aria-current="page">Modifica</li>
 @endsection
 
 @section('content')
-    <div class="card">
-        <div class="card-body">
+    <x-ui.card>
+        <x-ui.card-content>
             <form method="POST" action="{{ route('sessioni.update', $sessione) }}" style="max-width: 36rem;">
                 @csrf
                 @method('PUT')
                 @include('sessioni._form')
             </form>
-        </div>
-    </div>
+        </x-ui.card-content>
+    </x-ui.card>
 @endsection

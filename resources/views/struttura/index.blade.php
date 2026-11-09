@@ -4,48 +4,48 @@
 @section('heading', 'Struttura didattica')
 
 @section('breadcrumb')
-    <li class="breadcrumb-item active" aria-current="page">Struttura didattica</li>
+    <li class="ui-breadcrumb-item is-active" aria-current="page">Struttura didattica</li>
 @endsection
 
 @section('content')
-    <p class="text-muted">Gestisci corsi di studio, insegnamenti, sessioni d'esame e le impostazioni dei conflitti.</p>
+    <p class="text-muted-foreground">Gestisci corsi di studio, insegnamenti, sessioni d'esame e le impostazioni dei conflitti.</p>
 
-    <div class="row g-4">
-        <div class="col-md-6 col-lg-3">
-            <div class="card h-100">
-                <div class="card-body">
-                    <h5 class="card-title"><i class="bi bi-mortarboard me-1"></i> Corsi di studio</h5>
-                    <p class="card-text text-muted">{{ $corsi }} corsi registrati.</p>
-                    <a href="{{ route('corsi.index') }}" class="btn btn-primary btn-sm">Gestisci</a>
-                </div>
-            </div>
+    <div class="ui-row ui-gutter-4">
+        <div class="ui-col-md-6 ui-col-lg-3">
+            <x-ui.card class="h-full">
+                <x-ui.card-content>
+                    <h5 class="ui-card-title"><x-ui.icon name="graduation-cap" class="mr-1" /> Corsi di studio</h5>
+                    <p class="ui-card-text text-muted-foreground">{{ $corsi }} corsi registrati.</p>
+                    <x-ui.button variant="primary" size="sm" href="{{ route('corsi.index') }}">Gestisci</x-ui.button>
+                </x-ui.card-content>
+            </x-ui.card>
         </div>
-        <div class="col-md-6 col-lg-3">
-            <div class="card h-100">
-                <div class="card-body">
-                    <h5 class="card-title"><i class="bi bi-journal-text me-1"></i> Insegnamenti</h5>
-                    <p class="card-text text-muted">{{ $insegnamenti }} insegnamenti registrati.</p>
-                    <a href="{{ route('insegnamenti.index') }}" class="btn btn-primary btn-sm">Gestisci</a>
-                </div>
-            </div>
+        <div class="ui-col-md-6 ui-col-lg-3">
+            <x-ui.card class="h-full">
+                <x-ui.card-content>
+                    <h5 class="ui-card-title"><x-ui.icon name="book-open" class="mr-1" /> Insegnamenti</h5>
+                    <p class="ui-card-text text-muted-foreground">{{ $insegnamenti }} insegnamenti registrati.</p>
+                    <x-ui.button variant="primary" size="sm" href="{{ route('insegnamenti.index') }}">Gestisci</x-ui.button>
+                </x-ui.card-content>
+            </x-ui.card>
         </div>
-        <div class="col-md-6 col-lg-3">
-            <div class="card h-100">
-                <div class="card-body">
-                    <h5 class="card-title"><i class="bi bi-calendar-range me-1"></i> Sessioni</h5>
-                    <p class="card-text text-muted">{{ $sessioni }} sessioni registrate.</p>
-                    <a href="{{ route('sessioni.index') }}" class="btn btn-primary btn-sm">Gestisci</a>
-                </div>
-            </div>
+        <div class="ui-col-md-6 ui-col-lg-3">
+            <x-ui.card class="h-full">
+                <x-ui.card-content>
+                    <h5 class="ui-card-title"><x-ui.icon name="calendar-range" class="mr-1" /> Sessioni</h5>
+                    <p class="ui-card-text text-muted-foreground">{{ $sessioni }} sessioni registrate.</p>
+                    <x-ui.button variant="primary" size="sm" href="{{ route('sessioni.index') }}">Gestisci</x-ui.button>
+                </x-ui.card-content>
+            </x-ui.card>
         </div>
-        <div class="col-md-6 col-lg-3">
-            <div class="card h-100">
-                <div class="card-body">
-                    <h5 class="card-title"><i class="bi bi-gear me-1"></i> Conflitti</h5>
-                    <p class="card-text text-muted">Modalità attuale: <strong>{{ ucfirst($modalitaConflitto) }}</strong>.</p>
-                    <a href="{{ route('configurazione.edit') }}" class="btn btn-primary btn-sm">Configura</a>
-                </div>
-            </div>
+        <div class="ui-col-md-6 ui-col-lg-3">
+            <x-ui.card class="h-full">
+                <x-ui.card-content>
+                    <h5 class="ui-card-title"><x-ui.icon name="settings" class="mr-1" /> Conflitti</h5>
+                    <p class="ui-card-text text-muted-foreground">Modalità attuale: <strong>{{ ucfirst($modalitaConflitto) }}</strong>.</p>
+                    <x-ui.button variant="primary" size="sm" href="{{ route('configurazione.edit') }}">Configura</x-ui.button>
+                </x-ui.card-content>
+            </x-ui.card>
         </div>
     </div>
 @endsection

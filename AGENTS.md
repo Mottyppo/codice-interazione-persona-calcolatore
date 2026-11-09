@@ -28,7 +28,7 @@ Gli studenti sono beneficiari del coordinamento, ma non sono utenti modellati da
 Il progetto adotta l’architettura MVC di Laravel:
 
 - **Backend:** PHP `^8.3`, Laravel `^13.0`, modelli Eloquent e database relazionale.
-- **Pagine applicative:** template Blade, Bootstrap 5.3 e jQuery; la verifica preventiva dei conflitti usa AJAX.
+- **Pagine applicative:** template Blade, Tailwind CSS 3.4 e componenti Blade in stile shadcn con tema chiaro Amber Minimal. Le interazioni comuni sono in `resources/js/ui.js`; la verifica preventiva dei conflitti usa jQuery e AJAX.
 - **Autenticazione e profilo:** Laravel Jetstream, Fortify e Livewire.
 - **Ruoli e permessi:** Spatie Laravel Permission.
 - **Database predefinito:** SQLite; il progetto documenta anche la configurazione MySQL.

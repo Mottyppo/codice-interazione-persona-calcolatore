@@ -4,21 +4,21 @@
 @section('heading', 'Corsi di studio')
 
 @section('breadcrumb')
-    <li class="breadcrumb-item"><a href="{{ route('struttura.index') }}">Struttura didattica</a></li>
-    <li class="breadcrumb-item active" aria-current="page">Corsi di studio</li>
+    <li class="ui-breadcrumb-item"><a href="{{ route('struttura.index') }}">Struttura didattica</a></li>
+    <li class="ui-breadcrumb-item is-active" aria-current="page">Corsi di studio</li>
 @endsection
 
 @section('actions')
-    <a href="{{ route('corsi.create') }}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Nuovo corso</a>
+    <x-ui.button variant="primary" href="{{ route('corsi.create') }}"><x-ui.icon name="plus" /> Nuovo corso</x-ui.button>
 @endsection
 
 @section('content')
-    <div class="card">
-        <div class="card-body p-0">
+    <x-ui.card>
+        <x-ui.card-content class="p-0">
             @if ($corsi->isEmpty())
-                <p class="text-muted m-3">Nessun corso di studio registrato.</p>
+                <p class="text-muted-foreground m-4">Nessun corso di studio registrato.</p>
             @else
-                <table class="table table-hover align-middle mb-0">
+                <x-ui.table class="ui-table-hover align-middle mb-0">
                     <thead>
                         <tr>
                             <th>Nome</th>
@@ -32,9 +32,9 @@
                                 <td>{{ $corso->nome }}</td>
                                 <td class="text-center">{{ $corso->insegnamenti_count }}</td>
                                 <td class="text-end">
-                                    <a href="{{ route('corsi.edit', $corso) }}" class="btn btn-sm btn-outline-secondary">
-                                        <i class="bi bi-pencil"></i> Modifica
-                                    </a>
+                                    <x-ui.button variant="outline-secondary" size="sm" href="{{ route('corsi.edit', $corso) }}">
+                                        <x-ui.icon name="pencil" /> Modifica
+                                    </x-ui.button>
                                     @php
                                         $parti = [];
                                         if ($corso->insegnamenti_count > 0) {
@@ -53,8 +53,8 @@
                             </tr>
                         @endforeach
                     </tbody>
-                </table>
+                </x-ui.table>
             @endif
-        </div>
-    </div>
+        </x-ui.card-content>
+    </x-ui.card>
 @endsection

@@ -4,10 +4,10 @@
     'label' => 'Elimina',
 ])
 
-<form method="POST" action="{{ $action }}" class="d-inline" data-confirm="{{ $message }}">
+<form method="POST" action="{{ $action }}" class="inline" data-confirm="{{ $message }}">
     @csrf
     @method('DELETE')
-    <button type="submit" {{ $attributes->merge(['class' => 'btn btn-sm btn-outline-danger']) }}>
-        <i class="bi bi-trash"></i> {{ $label }}
-    </button>
+    <x-ui.button type="submit" variant="outline-danger" size="sm" aria-label="{{ $label ?: 'Elimina' }}" {{ $attributes }}>
+        <x-ui.icon name="trash" /> {{ $label }}
+    </x-ui.button>
 </form>

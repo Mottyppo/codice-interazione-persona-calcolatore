@@ -1,39 +1,39 @@
 {{-- Barra di navigazione con menu condizionato dal ruolo (Spatie @role / @can) --}}
-<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-    <div class="container">
-        <a class="navbar-brand fw-semibold" href="{{ route('dashboard') }}">
-            <i class="bi bi-calendar2-check me-1"></i> Coordinamento Esami
+<nav class="ui-navbar">
+    <div class="app-container">
+        <a class="ui-brand" href="{{ route('dashboard') }}">
+            <x-ui.icon name="calendar" class="mr-1 text-primary" /> Coordinamento Esami
         </a>
 
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain"
+        <button class="ui-nav-toggle" type="button" data-menu-toggle
             aria-controls="navbarMain" aria-expanded="false" aria-label="Apri il menu">
-            <span class="navbar-toggler-icon"></span>
+            <x-ui.icon name="menu" />
         </button>
 
-        <div class="collapse navbar-collapse" id="navbarMain">
-            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}"
+        <div class="ui-navbar-menu" id="navbarMain">
+            <ul class="ui-navbar-links ui-navbar-links-main mr-auto mb-2">
+                <li >
+                    <a class="ui-nav-link {{ request()->routeIs('dashboard') ? 'is-active' : '' }}"
                         href="{{ route('dashboard') }}">Dashboard</a>
                 </li>
 
                 {{-- Voci riservate all'amministratore --}}
                 @role('amministratore')
                     @if (Route::has('struttura.index'))
-                        <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('struttura.*') ? 'active' : '' }}"
+                        <li >
+                            <a class="ui-nav-link {{ request()->routeIs('struttura.*') ? 'is-active' : '' }}"
                                 href="{{ route('struttura.index') }}">Struttura didattica</a>
                         </li>
                     @endif
                     @if (Route::has('import.index'))
-                        <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('import.*') ? 'active' : '' }}"
+                        <li >
+                            <a class="ui-nav-link {{ request()->routeIs('import.*') ? 'is-active' : '' }}"
                                 href="{{ route('import.index') }}">Importa CSV</a>
                         </li>
                     @endif
                     @if (Route::has('configurazione.edit'))
-                        <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('configurazione.*') ? 'active' : '' }}"
+                        <li >
+                            <a class="ui-nav-link {{ request()->routeIs('configurazione.*') ? 'is-active' : '' }}"
                                 href="{{ route('configurazione.edit') }}">Configurazione</a>
                         </li>
                     @endif
@@ -41,40 +41,40 @@
 
                 {{-- Appelli: i docenti gestiscono i propri, l'admin li vede tutti --}}
                 @if (Route::has('appelli.index'))
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('appelli.*') ? 'active' : '' }}"
+                    <li >
+                        <a class="ui-nav-link {{ request()->routeIs('appelli.*') ? 'is-active' : '' }}"
                             href="{{ route('appelli.index') }}">@role('docente') I miei appelli @else Appelli @endrole</a>
                     </li>
                 @endif
 
                 {{-- Calendario: visibile a tutti gli utenti autenticati --}}
                 @if (Route::has('calendario.index'))
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('calendario.*') ? 'active' : '' }}"
+                    <li >
+                        <a class="ui-nav-link {{ request()->routeIs('calendario.*') ? 'is-active' : '' }}"
                             href="{{ route('calendario.index') }}">Calendario</a>
                     </li>
                 @endif
             </ul>
 
             {{-- Menu utente --}}
-            <ul class="navbar-nav">
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="userMenu" role="button"
-                        data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="bi bi-person-circle me-1"></i>{{ Auth::user()->name }}
+            <ul class="ui-navbar-links">
+                <li class="ui-dropdown" data-dropdown>
+                    <a class="ui-nav-link ui-dropdown-trigger" href="#" id="userMenu" role="button"
+                        data-dropdown-toggle aria-controls="userDropdown" aria-expanded="false">
+                        <x-ui.icon name="user-circle" class="mr-1" />{{ Auth::user()->name }}
                     </a>
-                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
+                    <ul class="ui-dropdown-menu" id="userDropdown" aria-labelledby="userMenu" hidden>
                         <li>
-                            <span class="dropdown-item-text small text-muted">
+                            <span class="ui-dropdown-label">
                                 {{ Auth::user()->getRoleNames()->map(fn ($r) => ucfirst($r))->implode(', ') }}
                             </span>
                         </li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="{{ route('profile.show') }}">Profilo</a></li>
+                        <li><hr class="ui-dropdown-divider"></li>
+                        <li><a class="ui-dropdown-item" href="{{ route('profile.show') }}">Profilo</a></li>
                         <li>
                             <form method="POST" action="{{ route('logout') }}">
                                 @csrf
-                                <button type="submit" class="dropdown-item">Esci</button>
+                                <button type="submit" class="ui-dropdown-item">Esci</button>
                             </form>
                         </li>
                     </ul>

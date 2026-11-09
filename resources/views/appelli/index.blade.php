@@ -4,32 +4,32 @@
 @section('heading', $isAdmin ? 'Tutti gli appelli' : 'I miei appelli')
 
 @section('breadcrumb')
-    <li class="breadcrumb-item active" aria-current="page">Appelli</li>
+    <li class="ui-breadcrumb-item is-active" aria-current="page">Appelli</li>
 @endsection
 
 @section('actions')
-    <a href="{{ route('appelli.create') }}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Nuovo appello</a>
+    <x-ui.button variant="primary" href="{{ route('appelli.create') }}"><x-ui.icon name="plus" /> Nuovo appello</x-ui.button>
 @endsection
 
 @section('content')
     {{-- Filtro: tutti gli appelli oppure solo quelli in conflitto --}}
     @if ($totaleConflitti > 0)
-        <div class="btn-group mb-3" role="group" aria-label="Filtro appelli">
-            <a href="{{ route('appelli.index') }}"
-                class="btn btn-outline-secondary {{ $soloConflitti ? '' : 'active' }}">Tutti</a>
-            <a href="{{ route('appelli.index', ['conflitti' => 1]) }}"
-                class="btn btn-outline-danger {{ $soloConflitti ? 'active' : '' }}">
-                <i class="bi bi-exclamation-triangle"></i> Solo conflitti ({{ $totaleConflitti }})
-            </a>
+        <div class="ui-button-group mb-4" role="group" aria-label="Filtro appelli">
+            <x-ui.button variant="outline-secondary" href="{{ route('appelli.index') }}"
+                class="{{ $soloConflitti ? '' : 'is-active' }}">Tutti</x-ui.button>
+            <x-ui.button variant="outline-danger" href="{{ route('appelli.index', ['conflitti' => 1]) }}"
+                class="{{ $soloConflitti ? 'is-active' : '' }}">
+                <x-ui.icon name="alert-triangle" /> Solo conflitti ({{ $totaleConflitti }})
+            </x-ui.button>
         </div>
     @endif
 
-    <div class="card">
-        <div class="card-body p-0">
+    <x-ui.card>
+        <x-ui.card-content class="p-0">
             @if ($appelli->isEmpty())
-                <p class="text-muted m-3">{{ $soloConflitti ? 'Nessun appello in conflitto.' : 'Nessun appello presente.' }}</p>
+                <p class="text-muted-foreground m-4">{{ $soloConflitti ? 'Nessun appello in conflitto.' : 'Nessun appello presente.' }}</p>
             @else
-                <table class="table table-hover align-middle mb-0">
+                <x-ui.table class="ui-table-hover align-middle mb-0">
                     <thead>
                         <tr>
                             <th>Data</th>
@@ -48,17 +48,17 @@
                         @foreach ($appelli as $appello)
                             @php($inConflitto = $idConflitto->contains($appello->id))
                             @php($preappello = $appello->data->lt($appello->sessione->data_inizio))
-                            <tr class="{{ $inConflitto ? 'table-danger' : '' }}">
+                            <tr class="{{ $inConflitto ? 'ui-row-danger' : '' }}">
                                 <td>
                                     {{ $appello->data->format('d/m/Y') }}
                                     @if ($preappello)
-                                        <span class="badge text-bg-info ms-1" title="Data precedente l'inizio della sessione">preappello</span>
+                                        <x-ui.badge class="ui-tone-info ml-1" title="Data precedente l'inizio della sessione">preappello</x-ui.badge>
                                     @endif
                                 </td>
                                 <td>
                                     {{ \Illuminate\Support\Str::substr($appello->ora_inizio, 0, 5) }}&ndash;{{ \Illuminate\Support\Str::substr($appello->ora_fine, 0, 5) }}
                                     @if ($inConflitto)
-                                        <span class="badge text-bg-danger ms-1" title="In conflitto con un altro appello"><i class="bi bi-exclamation-triangle"></i> conflitto</span>
+                                        <x-ui.badge class="ui-tone-danger ml-1" title="In conflitto con un altro appello"><x-ui.icon name="alert-triangle" /> conflitto</x-ui.badge>
                                     @endif
                                 </td>
                                 <td>{{ $appello->insegnamento->nome }}</td>
@@ -70,22 +70,22 @@
                                 <td>{{ $appello->aula ?? '—' }}</td>
                                 <td class="text-end">
                                     @if ($idModificabili->contains($appello->id))
-                                        <a href="{{ route('appelli.edit', $appello) }}" class="btn btn-sm btn-outline-secondary">
-                                            <i class="bi bi-pencil"></i> Modifica
-                                        </a>
+                                        <x-ui.button variant="outline-secondary" size="sm" href="{{ route('appelli.edit', $appello) }}">
+                                            <x-ui.icon name="pencil" /> Modifica
+                                        </x-ui.button>
                                         <x-delete-form :action="route('appelli.destroy', $appello)"
                                             message="Eliminare questo appello di {{ $appello->insegnamento->nome }} del {{ $appello->data->format('d/m/Y') }}?" />
                                     @else
-                                        <span class="text-muted small" title="Finestra di inserimento chiusa">
-                                            <i class="bi bi-lock"></i> finestra chiusa
+                                        <span class="text-muted-foreground ui-small" title="Finestra di inserimento chiusa">
+                                            <x-ui.icon name="lock" /> finestra chiusa
                                         </span>
                                     @endif
                                 </td>
                             </tr>
                         @endforeach
                     </tbody>
-                </table>
+                </x-ui.table>
             @endif
-        </div>
-    </div>
+        </x-ui.card-content>
+    </x-ui.card>
 @endsection

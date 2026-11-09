@@ -10,6 +10,7 @@ use App\Services\ConflittoService;
 use App\Support\CalendarioFestivita;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
@@ -17,6 +18,7 @@ class AppelloController extends Controller
 {
     public function index(Request $request, ConflittoService $conflitti)
     {
+        $request->validate(['conflitti' => ['nullable', 'boolean']]);
         $user = $request->user();
 
         // L'amministratore vede tutti gli appelli, il docente quelli dei propri
@@ -56,7 +58,11 @@ class AppelloController extends Controller
 
     public function create(Request $request)
     {
-        $appello = new Appello();
+        $request->validate([
+            'insegnamento' => ['nullable', 'integer'],
+            'sessione' => ['nullable', 'integer'],
+        ]);
+        $appello = new Appello;
 
         // Pre-compilazione opzionale da link (es. promemoria in dashboard): si
         // impostano solo insegnamento e sessione. Se un id non rientra tra
@@ -175,11 +181,19 @@ class AppelloController extends Controller
 
         $dati = $request->validate([
             'insegnamento_id' => ['required', 'integer', Rule::in($insegnamentiPermessi)],
-            'data' => ['required', 'date'],
-            'ora_inizio' => ['required', 'date_format:H:i'],
-            'ora_fine' => ['required', 'date_format:H:i', 'after:ora_inizio'],
+            'data' => ['bail', 'required', 'date_format:Y-m-d'],
+            'ora_inizio' => ['bail', 'required', 'date_format:H:i', 'after_or_equal:08:00'],
+            'ora_fine' => ['bail', 'required', 'date_format:H:i', 'before_or_equal:18:00', $this->fineSuccessiva($request)],
             'aula' => ['nullable', 'string', 'max:255'],
-            'appello_id' => ['nullable', 'integer'],
+            'appello_id' => ['bail', 'nullable', 'integer', Rule::in(($request->user()->hasRole('amministratore') ? Appello::query() : Appello::visibiliAlDocente($request->user()))->pluck('id')->all())],
+        ], [
+            'ora_inizio.after_or_equal' => 'Un appello non può iniziare prima delle 08:00.',
+            'ora_fine.before_or_equal' => 'Un appello non può terminare dopo le 18:00.',
+        ], [
+            'insegnamento_id' => 'insegnamento',
+            'ora_inizio' => 'ora di inizio',
+            'ora_fine' => 'ora di fine',
+            'appello_id' => 'appello da modificare',
         ]);
 
         $insegnamento = Insegnamento::with('corsoStudio')->find($dati['insegnamento_id']);
@@ -204,7 +218,7 @@ class AppelloController extends Controller
         $isAdmin = $request->user()->hasRole('amministratore');
 
         $dettagli = $trovati->map(function (Appello $a) use ($isAdmin, $insegnamento, $aula) {
-            $fascia = Str::substr($a->ora_inizio, 0, 5) . '–' . Str::substr($a->ora_fine, 0, 5);
+            $fascia = Str::substr($a->ora_inizio, 0, 5).'–'.Str::substr($a->ora_fine, 0, 5);
 
             $dettaglio = [
                 'anno' => $a->insegnamento->anno_frequenza,
@@ -303,11 +317,11 @@ class AppelloController extends Controller
         $insegnamentiPermessi = $this->insegnamentiDisponibili($user)->pluck('id')->all();
 
         return $request->validate([
-            'insegnamento_id' => ['required', Rule::in($insegnamentiPermessi)],
-            'sessione_id' => ['required', 'exists:sessioni,id'],
-            'data' => ['required', 'date', 'after_or_equal:today'],
-            'ora_inizio' => ['required', 'date_format:H:i', 'after_or_equal:08:00'],
-            'ora_fine' => ['required', 'date_format:H:i', 'after:ora_inizio', 'before_or_equal:18:00'],
+            'insegnamento_id' => ['bail', 'required', 'integer', Rule::in($insegnamentiPermessi)],
+            'sessione_id' => ['bail', 'required', 'integer', 'exists:sessioni,id'],
+            'data' => ['bail', 'required', 'date_format:Y-m-d', 'after_or_equal:today'],
+            'ora_inizio' => ['bail', 'required', 'date_format:H:i', 'after_or_equal:08:00'],
+            'ora_fine' => ['bail', 'required', 'date_format:H:i', 'before_or_equal:18:00', $this->fineSuccessiva($request)],
             'aula' => ['nullable', 'string', 'max:255'],
             'note' => ['nullable', 'string', 'max:1000'],
         ], [
@@ -323,11 +337,21 @@ class AppelloController extends Controller
         ]);
     }
 
+    private function fineSuccessiva(Request $request): \Closure
+    {
+        return function (string $attributo, mixed $valore, \Closure $fail) use ($request) {
+            $inizio = $request->input('ora_inizio');
+            if (is_string($inizio) && preg_match('/^([01][0-9]|2[0-3]):[0-5][0-9]$/', $inizio) && $valore <= $inizio) {
+                $fail('L’ora di fine deve essere successiva all’ora di inizio.');
+            }
+        };
+    }
+
     /**
      * Controlla i vincoli legati alla sessione: la data deve cadere nel periodo
      * della sessione e, per i docenti, la finestra di inserimento deve essere aperta.
      *
-     * @return array<string, string>|null  Errori da mostrare, oppure null se tutto è valido.
+     * @return array<string, string>|null Errori da mostrare, oppure null se tutto è valido.
      */
     private function violazioniSessione(Sessione $sessione, string $data, $user): ?array
     {
@@ -340,7 +364,7 @@ class AppelloController extends Controller
 
         if ($giorno->lt($dataMinima) || $giorno->gt($sessione->data_fine)) {
             return ['data' => 'La data dell\'appello deve cadere tra il '
-                . $dataMinima->format('d/m/Y') . ' e il ' . $sessione->data_fine->format('d/m/Y') . '.'];
+                .$dataMinima->format('d/m/Y').' e il '.$sessione->data_fine->format('d/m/Y').'.'];
         }
 
         // L'amministratore non è soggetto al vincolo della finestra di inserimento
@@ -384,8 +408,8 @@ class AppelloController extends Controller
      * l'admin, per il docente solo quelli con la finestra di inserimento aperta.
      * Lavora sui periodi già caricati in memoria, senza query aggiuntive.
      *
-     * @param  \Illuminate\Support\Collection<int, Appello>  $appelli
-     * @return \Illuminate\Support\Collection<int, int>
+     * @param  Collection<int, Appello>  $appelli
+     * @return Collection<int, int>
      */
     private function idModificabili($appelli, $user)
     {
@@ -439,7 +463,7 @@ class AppelloController extends Controller
     /**
      * Verifica che la data dell'appello non cada nel weekend o in una festività.
      *
-     * @return array<string, string>|null  Errore da mostrare, oppure null se valida.
+     * @return array<string, string>|null Errore da mostrare, oppure null se valida.
      */
     private function violazioneGiorno(string $data): ?array
     {
@@ -491,7 +515,7 @@ class AppelloController extends Controller
      * Messaggio riassuntivo dei conflitti rilevati, distinguendo tra conflitto
      * sugli studenti (stesso corso e anno) e conflitto sull'aula.
      *
-     * @param  \Illuminate\Support\Collection<int, Appello>  $conflitti
+     * @param  Collection<int, Appello>  $conflitti
      */
     private function messaggioConflitto($conflitti, Insegnamento $insegnamento, ?string $aula): string
     {
@@ -506,13 +530,13 @@ class AppelloController extends Controller
 
         if ($studenti->isNotEmpty()) {
             $parti[] = "{$studenti->count()} appello/i dello stesso anno ({$insegnamento->anno_frequenza}°) "
-                . "del corso «{$insegnamento->corsoStudio->nome}»";
+                ."del corso «{$insegnamento->corsoStudio->nome}»";
         }
 
         if ($perAula->isNotEmpty()) {
-            $parti[] = "{$perAula->count()} appello/i nella stessa aula («" . trim((string) $aula) . "»)";
+            $parti[] = "{$perAula->count()} appello/i nella stessa aula («".trim((string) $aula).'»)';
         }
 
-        return 'Conflitto con ' . implode(' e con ', $parti) . ' nella stessa data e fascia oraria.';
+        return 'Conflitto con '.implode(' e con ', $parti).' nella stessa data e fascia oraria.';
     }
 }

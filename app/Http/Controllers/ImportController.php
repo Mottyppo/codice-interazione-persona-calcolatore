@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Configurazione;
 use App\Models\CorsoStudio;
 use App\Models\Insegnamento;
 use App\Models\User;
+use App\Services\ConflittoService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class ImportController extends Controller
 {
@@ -33,7 +36,7 @@ class ImportController extends Controller
             'Corso di Laurea in Matematica,Analisi Matematica,1,docente2@esami.test',
         ];
 
-        return response(implode("\r\n", $righe) . "\r\n", 200, [
+        return response(implode("\r\n", $righe)."\r\n", 200, [
             'Content-Type' => 'text/csv; charset=UTF-8',
             'Content-Disposition' => 'attachment; filename="struttura-esempio.csv"',
         ]);
@@ -51,11 +54,16 @@ class ImportController extends Controller
         $handle = fopen($request->file('file')->getRealPath(), 'r');
 
         if ($handle === false) {
-            return back()->with('error', 'Impossibile leggere il file caricato.');
+            return back()->withErrors(['file' => 'Impossibile leggere il file caricato.'])->with('error', 'Impossibile leggere il file caricato.');
         }
 
         // Rileva il separatore (Excel italiano usa spesso il punto e virgola)
         $primaRiga = fgets($handle);
+        if ($primaRiga === false) {
+            fclose($handle);
+
+            return back()->withErrors(['file' => 'Il file è vuoto.'])->with('error', 'Il file è vuoto.');
+        }
         $delimitatore = substr_count($primaRiga, ';') > substr_count($primaRiga, ',') ? ';' : ',';
         rewind($handle);
 
@@ -64,7 +72,7 @@ class ImportController extends Controller
         if ($intestazione === false) {
             fclose($handle);
 
-            return back()->with('error', 'Il file è vuoto.');
+            return back()->withErrors(['file' => 'Il file è vuoto.'])->with('error', 'Il file è vuoto.');
         }
 
         $intestazione = array_map(
@@ -72,11 +80,19 @@ class ImportController extends Controller
             $intestazione
         );
 
+        if (count(array_unique($intestazione)) !== count($intestazione)) {
+            fclose($handle);
+
+            return back()->withErrors(['file' => 'L’intestazione contiene colonne duplicate.'])
+                ->with('error', 'L’intestazione contiene colonne duplicate.');
+        }
+
         $mancanti = array_diff(self::COLONNE_RICHIESTE, $intestazione);
         if (! empty($mancanti)) {
             fclose($handle);
 
-            return back()->with('error', 'Colonne obbligatorie mancanti: ' . implode(', ', $mancanti) . '.');
+            return back()->withErrors(['file' => 'Colonne obbligatorie mancanti: '.implode(', ', $mancanti).'.'])
+                ->with('error', 'Colonne obbligatorie mancanti: '.implode(', ', $mancanti).'.');
         }
 
         // Lettura e validazione delle righe
@@ -92,6 +108,12 @@ class ImportController extends Controller
                 continue;
             }
 
+            if (count($dati) > count($intestazione)) {
+                $errori[] = ['riga' => $numeroRiga, 'messaggio' => 'numero di colonne superiore all’intestazione'];
+
+                continue;
+            }
+
             $riga = array_combine($intestazione, array_pad($dati, count($intestazione), ''));
 
             $corso = trim((string) ($riga['corso'] ?? ''));
@@ -104,6 +126,15 @@ class ImportController extends Controller
             if ($corso === '') {
                 $messaggi[] = 'corso mancante';
             }
+            if (mb_strlen($corso) > 255) {
+                $messaggi[] = 'il nome del corso non può superare 255 caratteri';
+            }
+            if (mb_strlen($insegnamento) > 255) {
+                $messaggi[] = 'il nome dell’insegnamento non può superare 255 caratteri';
+            }
+            if (! mb_check_encoding(implode('', $dati), 'UTF-8')) {
+                $messaggi[] = 'il file deve usare la codifica UTF-8';
+            }
             if ($insegnamento === '') {
                 $messaggi[] = 'insegnamento mancante';
             }
@@ -114,8 +145,13 @@ class ImportController extends Controller
             // Risoluzione dei docenti per email (devono già esistere come docenti)
             $idDocenti = [];
             if ($docentiCella !== '') {
-                $emails = array_filter(array_map('trim', explode('|', $docentiCella)));
+                $emails = array_map('trim', explode('|', $docentiCella));
                 foreach ($emails as $email) {
+                    if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                        $messaggi[] = "email docente non valida ('{$email}')";
+
+                        continue;
+                    }
                     $docente = User::role('docente')->where('email', $email)->first();
                     if ($docente === null) {
                         $messaggi[] = "docente non trovato ('{$email}')";
@@ -143,11 +179,11 @@ class ImportController extends Controller
 
         // Import all-or-nothing: in presenza di errori non si scrive nulla
         if (! empty($errori)) {
-            return back()->with('import_errori', $errori);
+            return back()->withErrors(['file' => 'Il CSV contiene errori: correggi le righe indicate.'])->with('import_errori', $errori);
         }
 
         if (empty($righeValide)) {
-            return back()->with('error', 'Il file non contiene righe da importare.');
+            return back()->withErrors(['file' => 'Il file non contiene righe da importare.'])->with('error', 'Il file non contiene righe da importare.');
         }
 
         $riepilogo = [
@@ -158,6 +194,9 @@ class ImportController extends Controller
         ];
 
         DB::transaction(function () use ($righeValide, &$riepilogo) {
+            $conflitti = app(ConflittoService::class);
+            $verifica = (Configurazione::query()->value('modalita_conflitto') ?? 'blocco') === 'blocco';
+            $precedenti = $verifica ? $conflitti->coppieConflittoStudenti() : [];
             foreach ($righeValide as $riga) {
                 $corso = CorsoStudio::firstOrCreate(['nome' => $riga['corso']]);
                 if ($corso->wasRecentlyCreated) {
@@ -176,6 +215,11 @@ class ImportController extends Controller
                     $insegnamento->docenti()->syncWithoutDetaching($riga['docenti']);
                     $riepilogo['associazioni'] += count($riga['docenti']);
                 }
+            }
+            if ($verifica && array_diff($conflitti->coppieConflittoStudenti(), $precedenti) !== []) {
+                throw ValidationException::withMessages([
+                    'file' => 'L’importazione creerebbe sovrapposizioni tra appelli dello stesso corso e anno. Modifica prima gli appelli interessati.',
+                ]);
             }
         });
 
