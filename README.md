@@ -13,7 +13,7 @@ Progetto per il corso di **Programmazione Web**.
 - **SQLite** di default, **MySQL** opzionale (vedi *Avvio in locale*)
 - **Laravel Jetstream** (Livewire) per autenticazione e profilo
 - **Spatie laravel-permission** per ruoli e permessi
-- **Bootstrap 5.3** + **jQuery** (via CDN) per l'interfaccia delle pagine applicative
+- **Tailwind CSS 3.4**, componenti Blade in stile shadcn e tema chiaro **Amber Minimal**; **jQuery** (via CDN) per le verifiche AJAX
 - Verifica conflitti in tempo reale tramite **jQuery/AJAX**
 
 ## Ruoli
