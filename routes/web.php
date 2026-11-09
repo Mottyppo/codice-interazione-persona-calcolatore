@@ -13,7 +13,9 @@ use App\Http\Controllers\StrutturaController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return redirect()->route('dashboard');
+    return auth()->check()
+        ? redirect()->route('dashboard')
+        : view('welcome');
 });
 
 Route::middleware([

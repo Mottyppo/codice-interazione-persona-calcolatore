@@ -4,18 +4,18 @@
 @section('heading', 'Nuovo corso di studio')
 
 @section('breadcrumb')
-    <li class="breadcrumb-item"><a href="{{ route('struttura.index') }}">Struttura didattica</a></li>
-    <li class="breadcrumb-item"><a href="{{ route('corsi.index') }}">Corsi di studio</a></li>
-    <li class="breadcrumb-item active" aria-current="page">Nuovo</li>
+    <li class="ui-breadcrumb-item"><a href="{{ route('struttura.index') }}">Struttura didattica</a></li>
+    <li class="ui-breadcrumb-item"><a href="{{ route('corsi.index') }}">Corsi di studio</a></li>
+    <li class="ui-breadcrumb-item is-active" aria-current="page">Nuovo</li>
 @endsection
 
 @section('content')
-    <div class="card">
-        <div class="card-body">
+    <x-ui.card>
+        <x-ui.card-content>
             <form method="POST" action="{{ route('corsi.store') }}" style="max-width: 32rem;">
                 @csrf
                 @include('corsi._form')
             </form>
-        </div>
-    </div>
+        </x-ui.card-content>
+    </x-ui.card>
 @endsection

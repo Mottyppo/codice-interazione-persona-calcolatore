@@ -4,17 +4,17 @@
 @section('heading', 'Nuovo appello')
 
 @section('breadcrumb')
-    <li class="breadcrumb-item"><a href="{{ route('appelli.index') }}">Appelli</a></li>
-    <li class="breadcrumb-item active" aria-current="page">Nuovo</li>
+    <li class="ui-breadcrumb-item"><a href="{{ route('appelli.index') }}">Appelli</a></li>
+    <li class="ui-breadcrumb-item is-active" aria-current="page">Nuovo</li>
 @endsection
 
 @section('content')
-    <div class="card">
-        <div class="card-body">
+    <x-ui.card>
+        <x-ui.card-content>
             <form method="POST" action="{{ route('appelli.store') }}">
                 @csrf
                 @include('appelli._form')
             </form>
-        </div>
-    </div>
+        </x-ui.card-content>
+    </x-ui.card>
 @endsection
