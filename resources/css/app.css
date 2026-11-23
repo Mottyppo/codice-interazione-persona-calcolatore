@@ -109,6 +109,7 @@
   }
 
   /* Keep the existing application geometry independent of Jetstream's breakpoints. */
+  .app-viewport { scrollbar-gutter: stable; }
   .app-shell { @apply flex min-h-screen flex-col bg-muted; font-size: 1rem; line-height: 1.5; }
   :where(.app-shell) p { margin: 0 0 1rem; }
   :where(.app-shell) ul, :where(.app-shell) ol { margin-top: 0; margin-bottom: 1rem; padding-left: 2rem; }
