@@ -1,8 +1,10 @@
 <x-guest-layout>
-    <x-authentication-card>
+    <x-authentication-card class="landing-dot-field" data-auth-dot-background>
         <x-slot name="logo">
             <x-authentication-card-logo />
         </x-slot>
+
+        <x-back-to-home />
 
         <div class="mb-4 text-sm text-muted-foreground">
             {{ __('Forgot your password? No problem. Just let us know your email address and we will email you a password reset link that will allow you to choose a new one.') }}
@@ -25,7 +27,10 @@
                 <x-input-error for="email" class="mt-2" />
             </div>
 
-            <div class="flex items-center justify-end mt-4">
+            <div class="mt-4 flex flex-wrap items-center justify-end gap-2">
+                <x-secondary-button :href="route('login')">
+                    Torna al login
+                </x-secondary-button>
                 <x-button>
                     {{ __('Email Password Reset Link') }}
                 </x-button>
