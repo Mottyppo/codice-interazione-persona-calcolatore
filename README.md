@@ -78,11 +78,12 @@ Una sessione **deve iniziare da domani in poi** — non è possibile crearne una
 parta nel passato o nel giorno stesso — e **deve durare almeno una settimana**,
 contando gli estremi inclusi: dal 10 al 16 sono sette giorni, il minimo ammesso.
 
-La durata minima è verificata con una regola a chiusura in
-`SessioneController::validateRequest()`, perché le regole native di Laravel sanno
-confrontare due campi fra loro (`after_or_equal:data_inizio`) ma non un campo più
-un intervallo. Il form limita i campi con l'attributo `min` e sposta il minimo
-della data di fine in base all'inizio scelto.
+Il server valida il formato delle date e richiede che la fine sia almeno sei
+giorni dopo l'inizio. In modifica verifica anche che le nuove date comprendano
+gli appelli già pianificati, tenendo conto del margine dei preappelli, e che
+tutte le finestre esistenti si chiudano entro la nuova fine della sessione.
+Il modulo aggiorna la prima data di fine selezionabile in base all'inizio scelto.
+[Validazione delle sessioni](app/Http/Controllers/SessioneController.php)
 
 I dati del seeder rispettano gli stessi vincoli, così un appello di esempio resta
 modificabile dal form: lo verifica `tests/Feature/SeederCoerenzaTest.php`,
@@ -130,7 +131,9 @@ ma gli revoca l'accesso ad essi.
 
 ## Avvio in locale
 
-Requisiti: PHP 8.3 o superiore, Composer, Node.js.
+Servono PHP 8.3 o superiore, Composer e una versione di Node.js compatibile con
+Vite 7. Usa Node.js 20.19 o successivo della serie 20, oppure Node.js 22.12 o
+superiore.
 
 ```bash
 # 1. Dipendenze
@@ -171,7 +174,13 @@ DB_USERNAME=root
 DB_PASSWORD=
 ```
 
-Poi rilanciare `php artisan migrate:fresh --seed`.
+Per inizializzare il database vuoto con i dati di esempio, esegui
+`php artisan migrate --seed`. Su un database già in uso, esegui
+`php artisan migrate` per applicare le migrazioni in sospeso.
+
+> **Attenzione.** `php artisan migrate:fresh --seed` elimina tutte le tabelle e
+> i dati del database configurato, poi ricrea lo schema e carica i dati di esempio.
+> Usalo solo per azzerare un database di sviluppo i cui dati puoi perdere.
 
 > **Nota:** con MySQL il server deve restare attivo anche durante l'uso. Le
 > sessioni sono salvate sul database (`SESSION_DRIVER=database`), quindi a
@@ -201,3 +210,9 @@ php artisan test
 
 La suite copre autenticazione, gestione della struttura, import CSV, appelli,
 verifica dei conflitti e calendario.
+
+## Documentazione
+
+- [Analisi del codice](docs/report-analisi.md) — Funzionalità, ruoli, permessi e schema del database.
+- [Feedback dei moduli](docs/feedback-validation.md) — Checklist di validazione e registro delle verifiche.
+- [Guida per gli agenti](AGENTS.md) — Contesto del progetto e riferimenti ai sorgenti.

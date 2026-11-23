@@ -18,7 +18,7 @@ il feedback senza sostituire autorizzazioni e vincoli sui dati.
 | Insegnamento | Nome, anno 1–3, corso esistente; titolari opzionali, selezioni valide e appartenenti al ruolo docente. |
 | Sessione | Nome, date valide, inizio futuro, durata minima di sette giorni inclusivi; modifiche compatibili con appelli e finestre esistenti. |
 | Finestra di inserimento | Date obbligatorie, ordine corretto, chiusura entro la sessione; associazione alla sessione corretta. |
-| Appello | Insegnamento consentito, sessione valida/aperta per il docente, data lavorativa entro il margine ammesso; orari 08:00–18:00 con fine successiva all'inizio; aula e note opzionali entro i limiti. |
+| Appello | Insegnamento consentito, sessione valida, data lavorativa entro il margine ammesso e orari 08:00–18:00 con fine successiva all'inizio. Aula e note sono opzionali, entro i limiti di lunghezza. Per il docente la finestra di inserimento deve essere aperta e, in modifica, il controllo vale per entrambe le sessioni. |
 | Conflitti | Stesso corso/anno o aula occupata; blocco o avviso secondo configurazione; dettagli riservati protetti anche nelle risposte AJAX. |
 | Configurazione | Modalità ammessa, anticipo intero 0–60; modifiche compatibili con i dati già pianificati. |
 | CSV | File leggibile, formato e dimensione, intestazione, numero colonne, righe, nomi, anno e docenti; errori con riferimento alla riga e importazione atomica. |
@@ -35,6 +35,24 @@ il feedback senza sostituire autorizzazioni e vincoli sui dati.
 - Vengono esercitati sia richieste HTTP/Livewire sia controlli nativi nel browser.
 - La verifica finale comprende la suite completa, la build e una revisione del
   branch prima della pubblicazione e dell'integrazione.
+
+## Verifiche della pianificazione
+
+- Controlla che il docente possa spostare un appello quando entrambe le
+  finestre sono aperte. Se la finestra della sessione di origine o di
+  destinazione è chiusa, l'operazione deve essere respinta e l'appello deve
+  restare nella sessione di origine. L'amministratore può operare a finestre
+  chiuse, rispettando i vincoli su data e orari.
+- Nei moduli **Nuovo appello** e **Risolvi**, verifica che una data fuori
+  sessione produca un avviso senza un esito positivo sui conflitti. Cambia la
+  sessione mantenendo data e orari e controlla che l'anteprima si aggiorni.
+  Se la data è valida nella nuova sessione, l'esito deve sostituire l'avviso
+  precedente. Se la sessione viene deselezionata, l'esito deve sparire.
+- Verifica che anteprima e salvataggio richiedano una data valida secondo il
+  giorno civile italiano, con i vincoli su fine settimana, festività e margine
+  dei preappelli. I casi automatici includono il 4 ottobre, la mezzanotte italiana,
+  i conflitti tra sessioni, le fasce adiacenti e le finestre consecutive.
+  [Test delle regole di pianificazione](../tests/Feature/RegolePianificazioneTest.php)
 
 ## Correzioni e verifica finale
 

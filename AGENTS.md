@@ -10,6 +10,7 @@ Punti di ingresso principali:
 - `app/Http/Controllers/`: gestione delle richieste e validazione.
 - `app/Services/ConflittoService.php`: rilevazione dei conflitti.
 - `app/Services/MonitoraggioService.php`: monitoraggio delle scadenze.
+- `app/Support/CalendarioEsami.php`: giorno civile italiano per appelli, sessioni e scadenze.
 - `app/Support/CalendarioFestivita.php`: calendario delle festività.
 - `app/Models/`: entità e relazioni Eloquent.
 - `database/migrations/`: schema e vincoli del database.
@@ -35,7 +36,7 @@ Il progetto adotta l’architettura MVC di Laravel:
 
 Le versioni indicate derivano dai requisiti del progetto, senza implicare una verifica di compatibilità con ogni versione ammessa.
 
-Fonti: [composer.json](/Users/mottyppo/Desktop/codice-interazione-persona-calcolatore/composer.json), [layout applicativo](/Users/mottyppo/Desktop/codice-interazione-persona-calcolatore/resources/views/layouts/master.blade.php).
+Fonti: [composer.json](composer.json), [layout applicativo](resources/views/layouts/master.blade.php).
 
 ### 1.2 Funzioni principali
 
@@ -54,11 +55,13 @@ Fonti: [composer.json](/Users/mottyppo/Desktop/codice-interazione-persona-calcol
 
 La gestione delle finestre espone aggiunta ed eliminazione: non c’è una rotta dedicata alla loro modifica. Non è presente un pannello applicativo per amministrare utenti, ruoli o permessi.
 
-Fonti: [rotte web](/Users/mottyppo/Desktop/codice-interazione-persona-calcolatore/routes/web.php), [controller](/Users/mottyppo/Desktop/codice-interazione-persona-calcolatore/app/Http/Controllers), [configurazione Fortify](/Users/mottyppo/Desktop/codice-interazione-persona-calcolatore/config/fortify.php:146), [configurazione Jetstream](/Users/mottyppo/Desktop/codice-interazione-persona-calcolatore/config/jetstream.php:60).
+Fonti: [rotte web](routes/web.php), [controller](app/Http/Controllers), [configurazione Fortify](config/fortify.php), [configurazione Jetstream](config/jetstream.php).
 
 ### 1.3 Regole di pianificazione
 
 **Appelli.** Alla creazione e alla modifica, la data deve essere odierna o futura, non può cadere nel fine settimana o nelle festività codificate in `CalendarioFestivita`, e l’orario deve essere compreso fra le 08:00 e le 18:00, con fine successiva all’inizio. La data deve ricadere nell’intervallo della sessione, con un possibile anticipo per i preappelli: il margine predefinito è 14 giorni, configurabile fra 0 e 60. Questi vincoli valgono anche per l’amministratore.
+
+**Giorno civile.** Appelli, sessioni e scadenze seguono il fuso `Europe/Rome`. Usa `CalendarioEsami::oggi()` per confrontare le date di pianificazione. I timestamp tecnici seguono il fuso UTC dell’applicazione. [CalendarioEsami](app/Support/CalendarioEsami.php)
 
 **Sessioni.** Alla creazione e alla modifica, l’inizio deve essere successivo al giorno corrente e la durata deve essere di almeno sette giorni, estremi inclusi. Non è quindi prevista un’eccezione per modificare una sessione già iniziata.
 
@@ -73,15 +76,17 @@ Due intervalli adiacenti, ad esempio 09:00–11:00 e 11:00–13:00, non si sovra
 
 Il controllo al salvataggio considera gli appelli anche di sessioni differenti. In modalità `blocco` il conflitto impedisce il salvataggio; in modalità `warning` l’appello viene salvato con una segnalazione. La dashboard, l’elenco e il calendario evidenziano anche le sovrapposizioni con appelli di altre sessioni. Il calendario mostra le righe della sessione selezionata.
 
-Fonti: [validazione e vincoli degli appelli](/Users/mottyppo/Desktop/codice-interazione-persona-calcolatore/app/Http/Controllers/AppelloController.php:301), [ConflittoService](/Users/mottyppo/Desktop/codice-interazione-persona-calcolatore/app/Services/ConflittoService.php), [SessioneController](/Users/mottyppo/Desktop/codice-interazione-persona-calcolatore/app/Http/Controllers/SessioneController.php:71), [PeriodoInserimentoController](/Users/mottyppo/Desktop/codice-interazione-persona-calcolatore/app/Http/Controllers/PeriodoInserimentoController.php:14), [festività codificate](/Users/mottyppo/Desktop/codice-interazione-persona-calcolatore/app/Support/CalendarioFestivita.php).
+Fonti: [validazione e vincoli degli appelli](app/Http/Controllers/AppelloController.php), [ConflittoService](app/Services/ConflittoService.php), [SessioneController](app/Http/Controllers/SessioneController.php), [PeriodoInserimentoController](app/Http/Controllers/PeriodoInserimentoController.php), [festività codificate](app/Support/CalendarioFestivita.php).
 
 ### 1.4 Monitoraggio e importazione
 
 Il monitoraggio riguarda le sessioni non ancora terminate. Per ciascuna sessione verifica quali insegnamenti non abbiano **nessun appello**: non controlla un numero minimo di appelli superiore a uno. L’amministratore riceve segnalazioni per finestre in scadenza entro sette giorni o chiuse; il docente vede i propri insegnamenti mancanti quando la finestra è aperta, in scadenza o chiusa. Le segnalazioni sono mostrate nella dashboard; non è implementato un invio automatico di promemoria email.
 
+Finestre sovrapposte o consecutive formano un periodo continuo. Il monitoraggio calcola la scadenza sull’ultimo giorno prima della prima interruzione.
+
 Il CSV richiede `corso`, `insegnamento`, `anno_frequenza` e ammette `docenti`, contenente email separate da `|`. Sono accettati separatori virgola e punto e virgola. L’anno deve essere fra 1 e 3 e i docenti indicati devono già esistere con ruolo `docente`. Le righe vengono validate prima delle scritture, eseguite in transazione: gli errori di validazione rilevati impediscono l’importazione. I corsi esistenti sono riutilizzati; gli insegnamenti sono individuati per nome e corso e ne viene aggiornato l’anno. Le associazioni ai docenti vengono aggiunte senza rimuovere quelle esistenti. Non vengono importati utenti, sessioni o appelli.
 
-Fonti: [MonitoraggioService](/Users/mottyppo/Desktop/codice-interazione-persona-calcolatore/app/Services/MonitoraggioService.php), [ImportController](/Users/mottyppo/Desktop/codice-interazione-persona-calcolatore/app/Http/Controllers/ImportController.php).
+Fonti: [MonitoraggioService](app/Services/MonitoraggioService.php), [ImportController](app/Http/Controllers/ImportController.php).
 
 ## 2. Ruoli
 
@@ -96,7 +101,7 @@ Non esiste una tabella separata dei docenti. Il modello di Spatie ammette più r
 
 Un visitatore non autenticato non può consultare le pagine operative. Un utente registrato senza ruolo non costituisce un terzo ruolo: può accedere al proprio account e alla dashboard, che usa il ramo non amministrativo, ma le rotte di appelli e calendario richiedono espressamente `docente` o `amministratore`.
 
-Fonte: [RolesAndPermissionsSeeder](/Users/mottyppo/Desktop/codice-interazione-persona-calcolatore/database/seeders/RolesAndPermissionsSeeder.php), [rotte protette](/Users/mottyppo/Desktop/codice-interazione-persona-calcolatore/routes/web.php:26), [DashboardController](/Users/mottyppo/Desktop/codice-interazione-persona-calcolatore/app/Http/Controllers/DashboardController.php).
+Fonte: [RolesAndPermissionsSeeder](database/seeders/RolesAndPermissionsSeeder.php), [rotte protette](routes/web.php), [DashboardController](app/Http/Controllers/DashboardController.php).
 
 ## 3. Permessi associati ai ruoli
 
@@ -134,7 +139,7 @@ La titolarità segue la tabella `docente_insegnamento`, non `appelli.user_id`. P
 
 `appelli.user_id` registra chi ha creato l’appello, viene impostato dal server alla creazione e non viene sostituito durante la modifica. Può riferirsi anche a un amministratore: il nome della relazione Eloquent `docente()` non impone che l’autore abbia ruolo docente.
 
-Fonti: [autorizzazione per titolarità](/Users/mottyppo/Desktop/codice-interazione-persona-calcolatore/app/Http/Controllers/AppelloController.php:285), [selezione degli appelli del docente](/Users/mottyppo/Desktop/codice-interazione-persona-calcolatore/app/Models/Appello.php:56), [assegnazione dell’autore](/Users/mottyppo/Desktop/codice-interazione-persona-calcolatore/app/Http/Controllers/AppelloController.php:106), [test sulla co-titolarità e sulla rimozione](/Users/mottyppo/Desktop/codice-interazione-persona-calcolatore/tests/Feature/AppelloTest.php:183).
+Fonti: [autorizzazione per titolarità](app/Http/Controllers/AppelloController.php), [selezione degli appelli del docente](app/Models/Appello.php), [assegnazione dell’autore](app/Http/Controllers/AppelloController.php), [test sulla co-titolarità e sulla rimozione](tests/Feature/AppelloTest.php).
 
 ### 3.3 Visibilità dei dati
 
@@ -142,7 +147,7 @@ Nel **calendario**, per gli appelli altrui il docente vede data, corso di studio
 
 Nella **risposta AJAX sui conflitti**, il docente riceve anno, orario e motivi del conflitto; l’amministratore riceve anche nome dell’insegnamento, autore e aula. Il controllo viene comunque eseguito rispetto a tutti gli appelli pertinenti, anche quelli i cui dettagli sono nascosti al docente.
 
-Fonti: [vista del calendario](/Users/mottyppo/Desktop/codice-interazione-persona-calcolatore/resources/views/calendario/index.blade.php:61), [risposta della verifica conflitti](/Users/mottyppo/Desktop/codice-interazione-persona-calcolatore/app/Http/Controllers/AppelloController.php:202).
+Fonti: [vista del calendario](resources/views/calendario/index.blade.php), [risposta della verifica conflitti](app/Http/Controllers/AppelloController.php).
 
 ## 4. Base di dati: struttura e relazioni
 
@@ -150,7 +155,7 @@ Fonti: [vista del calendario](/Users/mottyppo/Desktop/codice-interazione-persona
 
 La configurazione predefinita usa SQLite nel file `database/database.sqlite`, con vincoli di chiave esterna abilitati salvo override di ambiente. `.env.example` imposta su database anche sessioni di accesso, cache e coda dei job. MySQL è un’alternativa documentata; il motore effettivamente usato da un’installazione dipende dall’ambiente.
 
-Fonti: [config/database.php](/Users/mottyppo/Desktop/codice-interazione-persona-calcolatore/config/database.php:20), [.env.example](/Users/mottyppo/Desktop/codice-interazione-persona-calcolatore/.env.example:27).
+Fonti: [config/database.php](config/database.php), [.env.example](.env.example).
 
 ### 4.2 Tabelle del dominio
 
@@ -169,7 +174,7 @@ Le tabelle seguenti hanno una chiave primaria `id` e i timestamp `created_at` e 
 
 Le note sono limitate a 1.000 caratteri dalla validazione applicativa. L’aula è testo libero: non esiste una tabella `aule` con capienza, codice o disponibilità. I campi relativi a team e foto del profilo sono residui dello schema Jetstream: le relative funzionalità sono disabilitate nella configurazione.
 
-Fonti: [migrazioni](/Users/mottyppo/Desktop/codice-interazione-persona-calcolatore/database/migrations), [modelli Eloquent](/Users/mottyppo/Desktop/codice-interazione-persona-calcolatore/app/Models).
+Fonti: [migrazioni](database/migrations), [modelli Eloquent](app/Models).
 
 ### 4.3 Relazioni e cardinalità
 
@@ -209,7 +214,7 @@ erDiagram
 
 Utenti e ruoli, così come ruoli e permessi, sono in relazione N:M. I collegamenti ai modelli sono polimorfici: `model_id` è accompagnato da `model_type` e non costituisce una normale FK diretta verso `users`. La modalità team di Spatie è disabilitata.
 
-Fonti: [migrazione delle autorizzazioni](/Users/mottyppo/Desktop/codice-interazione-persona-calcolatore/database/migrations/2026_06_24_214309_create_permission_tables.php), [configurazione Spatie](/Users/mottyppo/Desktop/codice-interazione-persona-calcolatore/config/permission.php), [seeder di ruoli e permessi](/Users/mottyppo/Desktop/codice-interazione-persona-calcolatore/database/seeders/RolesAndPermissionsSeeder.php).
+Fonti: [migrazione delle autorizzazioni](database/migrations/2026_06_24_214309_create_permission_tables.php), [configurazione Spatie](config/permission.php), [seeder di ruoli e permessi](database/seeders/RolesAndPermissionsSeeder.php).
 
 ### 4.5 Tabelle tecniche
 
@@ -238,4 +243,4 @@ Le eliminazioni sono fisiche: nei modelli del dominio non è usato `SoftDeletes`
 
 Le regole su orari, date, durata delle sessioni, finestra aperta e conflitti sono implementate nei controller o servizi, non come vincoli relazionali del database. Non è definito un vincolo univoco che limiti un insegnamento a un solo appello per sessione.
 
-Fonti: [migrazione degli appelli](/Users/mottyppo/Desktop/codice-interazione-persona-calcolatore/database/migrations/2026_06_24_230005_create_appelli_table.php:11), [migrazione della titolarità](/Users/mottyppo/Desktop/codice-interazione-persona-calcolatore/database/migrations/2026_06_24_230007_create_docente_insegnamento_table.php:11), [cancellazione account](/Users/mottyppo/Desktop/codice-interazione-persona-calcolatore/app/Actions/Jetstream/DeleteUser.php).
+Fonti: [migrazione degli appelli](database/migrations/2026_06_24_230005_create_appelli_table.php), [migrazione della titolarità](database/migrations/2026_06_24_230007_create_docente_insegnamento_table.php), [cancellazione account](app/Actions/Jetstream/DeleteUser.php).

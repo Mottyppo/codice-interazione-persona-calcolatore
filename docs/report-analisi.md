@@ -24,7 +24,7 @@ Il progetto adotta l’architettura MVC di Laravel:
 
 Le versioni indicate derivano dai requisiti del progetto, senza implicare una verifica di compatibilità con ogni versione ammessa.
 
-Fonti: [composer.json](composer.json), [layout applicativo](resources/views/layouts/master.blade.php).
+Fonti: [composer.json](../composer.json), [layout applicativo](../resources/views/layouts/master.blade.php).
 
 ### 1.2 Funzioni principali
 
@@ -44,13 +44,13 @@ Fonti: [composer.json](composer.json), [layout applicativo](resources/views/layo
 
 La gestione delle finestre espone aggiunta ed eliminazione: non c’è una rotta dedicata alla loro modifica. Non è presente un pannello applicativo per amministrare utenti, ruoli o permessi.
 
-Fonti: [rotte web](routes/web.php), [controller](app/Http/Controllers), [configurazione Fortify](config/fortify.php), [configurazione Jetstream](config/jetstream.php).
+Fonti: [rotte web](../routes/web.php), [controller](../app/Http/Controllers), [configurazione Fortify](../config/fortify.php), [configurazione Jetstream](../config/jetstream.php).
 
 ### 1.3 Regole di pianificazione
 
-**Appelli.** Creazione, modifica e anteprima AJAX applicano gli stessi vincoli di pianificazione. La data deve essere odierna o futura, dal lunedì al venerdì, esclusi i giorni festivi. L’orario va dalle 08:00 alle 18:00, con fine successiva all’inizio. Il margine dei preappelli estende l’intervallo della sessione verso l’inizio di 14 giorni per impostazione predefinita, configurabili fra 0 e 60. I vincoli di data e orario valgono per entrambi i ruoli. L’applicazione respinge la riduzione del margine quando escluderebbe un preappello già pianificato. [Validazione degli appelli](app/Http/Controllers/AppelloController.php) · [Configurazione](app/Http/Controllers/ConfigurazioneController.php)
+**Appelli.** Creazione, modifica e anteprima AJAX applicano gli stessi vincoli di pianificazione. La data deve essere odierna o futura, dal lunedì al venerdì, esclusi i giorni festivi. L’orario va dalle 08:00 alle 18:00, con fine successiva all’inizio. Il margine dei preappelli estende l’intervallo della sessione verso l’inizio di 14 giorni per impostazione predefinita, configurabili fra 0 e 60. I vincoli di data e orario valgono per entrambi i ruoli. L’applicazione respinge la riduzione del margine quando escluderebbe un preappello già pianificato. [Validazione degli appelli](../app/Http/Controllers/AppelloController.php) · [Configurazione](../app/Http/Controllers/ConfigurazioneController.php)
 
-**Calendario civile.** Il giorno corrente per appelli, sessioni e scadenze segue `Europe/Rome`. I timestamp tecnici seguono il fuso UTC dell’applicazione. Il calendario delle festività include il Lunedì dell’Angelo e il 4 ottobre, festa nazionale di San Francesco d’Assisi dal 2026. [CalendarioEsami](app/Support/CalendarioEsami.php) · [CalendarioFestivita](app/Support/CalendarioFestivita.php) · [Legge 8 ottobre 2025, n. 151](https://www.gazzettaufficiale.it/eli/id/2025/10/10/25G00153/SG)
+**Calendario civile.** Il giorno corrente per appelli, sessioni e scadenze segue `Europe/Rome`. I timestamp tecnici seguono il fuso UTC dell’applicazione. Il calendario delle festività include il Lunedì dell’Angelo e il 4 ottobre, festa nazionale di San Francesco d’Assisi dal 2026. [CalendarioEsami](../app/Support/CalendarioEsami.php) · [CalendarioFestivita](../app/Support/CalendarioFestivita.php) · [Legge 8 ottobre 2025, n. 151](https://www.gazzettaufficiale.it/eli/id/2025/10/10/25G00153/SG)
 
 **Sessioni.** Alla creazione e alla modifica, l’inizio deve essere successivo al giorno corrente e la durata deve essere di almeno sette giorni, estremi inclusi. Il controllo si applica anche alle modifiche di sessioni già iniziate. La modifica delle date deve preservare gli appelli, compresi i preappelli, e la chiusura delle finestre già registrate.
 
@@ -65,7 +65,7 @@ Due intervalli adiacenti, ad esempio 09:00–11:00 e 11:00–13:00, sono compati
 
 Anteprima, salvataggio, dashboard, elenco e calendario considerano anche le sovrapposizioni con appelli di altre sessioni. Il calendario mostra le righe della sessione selezionata e segnala i conflitti su quelle righe. In modalità `blocco` il conflitto impedisce il salvataggio. In modalità `warning` l’appello viene salvato con una segnalazione.
 
-Fonti: [validazione e vincoli degli appelli](app/Http/Controllers/AppelloController.php), [ConflittoService](app/Services/ConflittoService.php), [SessioneController](app/Http/Controllers/SessioneController.php), [PeriodoInserimentoController](app/Http/Controllers/PeriodoInserimentoController.php), [festività codificate](app/Support/CalendarioFestivita.php).
+Fonti: [validazione e vincoli degli appelli](../app/Http/Controllers/AppelloController.php), [ConflittoService](../app/Services/ConflittoService.php), [SessioneController](../app/Http/Controllers/SessioneController.php), [PeriodoInserimentoController](../app/Http/Controllers/PeriodoInserimentoController.php), [festività codificate](../app/Support/CalendarioFestivita.php).
 
 ### 1.4 Monitoraggio e importazione
 
@@ -73,7 +73,7 @@ Il monitoraggio riguarda le sessioni ancora in corso o future e individua gli in
 
 Il CSV richiede `corso`, `insegnamento`, `anno_frequenza` e ammette `docenti`, contenente email separate da `|`. Sono accettati separatori virgola e punto e virgola. L’anno deve essere fra 1 e 3 e i docenti indicati devono già esistere con ruolo `docente`. L’applicazione valida le righe prima della transazione e riutilizza i corsi esistenti. Identifica gli insegnamenti per nome e corso, ne aggiorna l’anno e aggiunge le associazioni ai docenti. In modalità `blocco` annulla l’intera importazione se le modifiche generano nuovi conflitti fra appelli dello stesso corso e anno.
 
-Fonti: [MonitoraggioService](app/Services/MonitoraggioService.php), [ImportController](app/Http/Controllers/ImportController.php).
+Fonti: [MonitoraggioService](../app/Services/MonitoraggioService.php), [ImportController](../app/Http/Controllers/ImportController.php).
 
 ## 2. Ruoli
 
@@ -88,7 +88,7 @@ Non esiste una tabella separata dei docenti. Il modello di Spatie ammette più r
 
 Un visitatore non autenticato non può consultare le pagine operative. Un utente registrato senza ruolo non costituisce un terzo ruolo: può accedere al proprio account e alla dashboard, che usa il ramo non amministrativo, ma le rotte di appelli e calendario richiedono espressamente `docente` o `amministratore`.
 
-Fonte: [RolesAndPermissionsSeeder](database/seeders/RolesAndPermissionsSeeder.php), [rotte protette](routes/web.php), [DashboardController](app/Http/Controllers/DashboardController.php).
+Fonte: [RolesAndPermissionsSeeder](../database/seeders/RolesAndPermissionsSeeder.php), [rotte protette](../routes/web.php), [DashboardController](../app/Http/Controllers/DashboardController.php).
 
 ## 3. Permessi associati ai ruoli
 
@@ -126,7 +126,7 @@ La titolarità segue la tabella `docente_insegnamento`, non `appelli.user_id`. P
 
 `appelli.user_id` registra chi ha creato l’appello, viene impostato dal server alla creazione e non viene sostituito durante la modifica. Può riferirsi anche a un amministratore: il nome della relazione Eloquent `docente()` non impone che l’autore abbia ruolo docente.
 
-Fonti: [autorizzazione per titolarità](app/Http/Controllers/AppelloController.php), [selezione degli appelli del docente](app/Models/Appello.php), [assegnazione dell’autore](app/Http/Controllers/AppelloController.php), [test sulla co-titolarità e sulla rimozione](tests/Feature/AppelloTest.php).
+Fonti: [autorizzazione per titolarità](../app/Http/Controllers/AppelloController.php), [selezione degli appelli del docente](../app/Models/Appello.php), [assegnazione dell’autore](../app/Http/Controllers/AppelloController.php), [test sulla co-titolarità e sulla rimozione](../tests/Feature/AppelloTest.php).
 
 ### 3.3 Visibilità dei dati
 
@@ -134,7 +134,7 @@ Nel **calendario**, per gli appelli altrui il docente vede data, corso di studio
 
 Nella **risposta AJAX sui conflitti**, il docente riceve anno, orario e motivi del conflitto. L’amministratore riceve anche nome dell’insegnamento, autore e aula. L’anteprima richiede `sessione_id` e restituisce HTTP 422 con i messaggi di validazione quando la richiesta viola i vincoli di pianificazione. Il form presenta quei messaggi nell’area dell’anteprima.
 
-Fonti: [vista del calendario](resources/views/calendario/index.blade.php), [risposta della verifica conflitti](app/Http/Controllers/AppelloController.php).
+Fonti: [vista del calendario](../resources/views/calendario/index.blade.php), [risposta della verifica conflitti](../app/Http/Controllers/AppelloController.php).
 
 ## 4. Base di dati: struttura e relazioni
 
@@ -142,7 +142,7 @@ Fonti: [vista del calendario](resources/views/calendario/index.blade.php), [risp
 
 La configurazione predefinita usa SQLite nel file `database/database.sqlite`, con vincoli di chiave esterna abilitati salvo override di ambiente. `.env.example` imposta su database anche sessioni di accesso, cache e coda dei job. MySQL è un’alternativa documentata; il motore effettivamente usato da un’installazione dipende dall’ambiente.
 
-Fonti: [config/database.php](config/database.php), [.env.example](.env.example).
+Fonti: [config/database.php](../config/database.php), [.env.example](../.env.example).
 
 ### 4.2 Tabelle del dominio
 
@@ -161,7 +161,7 @@ Le tabelle seguenti hanno una chiave primaria `id` e i timestamp `created_at` e 
 
 Le note sono limitate a 1.000 caratteri dalla validazione applicativa. L’aula è testo libero: non esiste una tabella `aule` con capienza, codice o disponibilità. I campi relativi a team e foto del profilo sono residui dello schema Jetstream: le relative funzionalità sono disabilitate nella configurazione.
 
-Fonti: [migrazioni](database/migrations), [modelli Eloquent](app/Models).
+Fonti: [migrazioni](../database/migrations), [modelli Eloquent](../app/Models).
 
 ### 4.3 Relazioni e cardinalità
 
@@ -201,7 +201,7 @@ erDiagram
 
 Utenti e ruoli, così come ruoli e permessi, sono in relazione N:M. I collegamenti ai modelli sono polimorfici: `model_id` è accompagnato da `model_type` e non costituisce una normale FK diretta verso `users`. La modalità team di Spatie è disabilitata.
 
-Fonti: [migrazione delle autorizzazioni](database/migrations/2026_06_24_214309_create_permission_tables.php), [configurazione Spatie](config/permission.php), [seeder di ruoli e permessi](database/seeders/RolesAndPermissionsSeeder.php).
+Fonti: [migrazione delle autorizzazioni](../database/migrations/2026_06_24_214309_create_permission_tables.php), [configurazione Spatie](../config/permission.php), [seeder di ruoli e permessi](../database/seeders/RolesAndPermissionsSeeder.php).
 
 ### 4.5 Tabelle tecniche
 
@@ -230,21 +230,21 @@ Le eliminazioni sono fisiche: nei modelli del dominio non è usato `SoftDeletes`
 
 Le regole su orari, date, durata delle sessioni, finestra aperta e conflitti sono implementate nei controller o servizi, non come vincoli relazionali del database. Non è definito un vincolo univoco che limiti un insegnamento a un solo appello per sessione.
 
-Fonti: [migrazione degli appelli](database/migrations/2026_06_24_230005_create_appelli_table.php), [migrazione della titolarità](database/migrations/2026_06_24_230007_create_docente_insegnamento_table.php), [cancellazione account](app/Actions/Jetstream/DeleteUser.php).
+Fonti: [migrazione degli appelli](../database/migrations/2026_06_24_230005_create_appelli_table.php), [migrazione della titolarità](../database/migrations/2026_06_24_230007_create_docente_insegnamento_table.php), [cancellazione account](../app/Actions/Jetstream/DeleteUser.php).
 
 ## 5. Aspetti da considerare nella descrizione del sistema
 
-1. **Registrazione senza assegnazione automatica del ruolo.** `CreateNewUser` crea l’account. Il seeder assegna i ruoli agli utenti dimostrativi e la gestione di ruoli e permessi avviene fuori dall’interfaccia. [CreateNewUser](app/Actions/Fortify/CreateNewUser.php) · [Seeder di ruoli e permessi](database/seeders/RolesAndPermissionsSeeder.php)
-2. **Verifica email disabilitata.** Il modello `User` e la configurazione Fortify consentono l’accesso con l’indirizzo registrato senza un passaggio di verifica. [Configurazione Fortify](config/fortify.php) · [Modello User](app/Models/User.php)
-3. **Visibilità del calendario per l’autore.** Un docente rimosso da un insegnamento perde la gestione dei relativi appelli. Nel calendario continua a vedere i dettagli degli appelli che ha creato personalmente. [Selezione degli appelli del docente](app/Models/Appello.php) · [Vista del calendario](resources/views/calendario/index.blade.php)
+1. **Registrazione senza assegnazione automatica del ruolo.** `CreateNewUser` crea l’account. Il seeder assegna i ruoli agli utenti dimostrativi e la gestione di ruoli e permessi avviene fuori dall’interfaccia. [CreateNewUser](../app/Actions/Fortify/CreateNewUser.php) · [Seeder di ruoli e permessi](../database/seeders/RolesAndPermissionsSeeder.php)
+2. **Verifica email disabilitata.** Il modello `User` e la configurazione Fortify consentono l’accesso con l’indirizzo registrato senza un passaggio di verifica. [Configurazione Fortify](../config/fortify.php) · [Modello User](../app/Models/User.php)
+3. **Visibilità del calendario per l’autore.** Un docente rimosso da un insegnamento perde la gestione dei relativi appelli. Nel calendario continua a vedere i dettagli degli appelli che ha creato personalmente. [Selezione degli appelli del docente](../app/Models/Appello.php) · [Vista del calendario](../resources/views/calendario/index.blade.php)
 
 ## 6. Code review e verifiche
 
-La revisione del 24 novembre ha seguito l’anteprima AJAX, il salvataggio, lo spostamento fra sessioni, il calendario e il monitoraggio. Il servizio conflitti riusa l’insegnamento già caricato dal controller e il form usa l’area dell’anteprima per esporre gli errori restituiti dal server. È stato rimosso il listener JavaScript del vecchio evento di validazione, rimasto senza chiamanti. [Servizio conflitti](app/Services/ConflittoService.php) · [Form appelli](resources/views/appelli/_form.blade.php) · [Validazione frontend](resources/js/validation.js)
+La revisione del 24 novembre ha seguito l’anteprima AJAX, il salvataggio, lo spostamento fra sessioni, il calendario e il monitoraggio. Il servizio conflitti riusa l’insegnamento già caricato dal controller e il form usa l’area dell’anteprima per esporre gli errori restituiti dal server. È stato rimosso il listener JavaScript del vecchio evento di validazione, rimasto senza chiamanti. [Servizio conflitti](../app/Services/ConflittoService.php) · [Form appelli](../resources/views/appelli/_form.blade.php) · [Validazione frontend](../resources/js/validation.js)
 
-Il test esistente di spostamento ora usa una destinazione con finestra aperta. Per il docente verifica il rifiuto in anteprima e al salvataggio e controlla che l’appello conservi la sessione di origine. Per l’amministratore verifica il salvataggio nella destinazione. I casi già presenti verificano anche il cambio di giorno a mezzanotte italiana, la festività del 4 ottobre, i conflitti tra sessioni, le fasce orarie adiacenti e la scadenza di finestre contigue. [Test delle regole di pianificazione](tests/Feature/RegolePianificazioneTest.php)
+Il test esistente di spostamento ora usa una destinazione con finestra aperta. Per il docente verifica il rifiuto in anteprima e al salvataggio e controlla che l’appello conservi la sessione di origine. Per l’amministratore verifica il salvataggio nella destinazione. I casi già presenti verificano anche il cambio di giorno a mezzanotte italiana, la festività del 4 ottobre, i conflitti tra sessioni, le fasce orarie adiacenti e la scadenza di finestre contigue. [Test delle regole di pianificazione](../tests/Feature/RegolePianificazioneTest.php)
 
-La suite usa SQLite in memoria. I dati dimostrativi usati per la prova nel browser sono in un database SQLite temporaneo. [Configurazione PHPUnit](phpunit.xml) · [Suite di test](tests)
+La suite usa SQLite in memoria. I dati dimostrativi usati per la prova nel browser sono in un database SQLite temporaneo. [Configurazione PHPUnit](../phpunit.xml) · [Suite di test](../tests)
 
 - `composer test` ha superato 223 test con 1.417 asserzioni, senza fallimenti o salti.
 - `npm run build` e Pint sui file PHP oggetto della revisione sono riusciti. Il confronto dell’elenco delle rotte ha dato lo stesso risultato prima e dopo.
