@@ -218,11 +218,11 @@
 
   .ui-navbar { @apply relative flex flex-wrap items-center justify-between bg-card py-2; box-shadow: inset 0 -1px 0 var(--border); }
   .ui-navbar > .app-container { @apply flex flex-wrap items-center justify-between; }
-  .ui-brand { @apply mr-4 inline-block whitespace-nowrap py-1.5 text-xl font-semibold text-foreground no-underline; }
+  .ui-brand { @apply mr-4 inline-block whitespace-nowrap py-1.5 text-lg font-semibold text-foreground no-underline; }
   .ui-navbar-menu { @apply hidden basis-full grow items-center; }
   .ui-navbar-menu.is-open { @apply block; }
-  .ui-navbar-links { @apply flex list-none flex-col pl-0; margin-bottom: 0; }
-  .ui-nav-link { @apply block bg-transparent px-0 py-2 text-muted-foreground no-underline transition-colors hover:text-foreground; }
+  .ui-navbar-links { @apply flex list-none flex-col gap-0.5 pl-0; margin-bottom: 0; }
+  .ui-nav-link { @apply block bg-transparent px-0 py-2 text-[0.9375rem] leading-6 text-muted-foreground no-underline transition-colors hover:text-foreground; }
   .ui-nav-link.is-active { @apply text-accent-foreground; }
   .ui-nav-toggle { @apply cursor-pointer rounded-md border border-border px-3 py-1 text-xl text-foreground; line-height: 1; }
   .ui-nav-toggle .ui-icon { width: 1.5em; height: 1.5em; vertical-align: middle; }
@@ -268,12 +268,13 @@
   .ui-navbar > .app-container { flex-wrap: nowrap; }
   .ui-navbar-menu { display: flex !important; flex-basis: auto; }
   .ui-navbar-links { flex-direction: row; }
-  .ui-navbar-links-main { margin-bottom: 0; }
+  .ui-navbar-links-main { gap: .375rem; margin-bottom: 0; }
   .ui-nav-link { padding-right: .5rem; padding-left: .5rem; }
   .ui-nav-toggle { display: none; }
 }
 @media (min-width: 1200px) {
   .app-container { max-width: 1140px; }
+  .ui-navbar-links-main { gap: .625rem; }
   .ui-heading { font-size: 1.75rem; }
   .ui-stat-value { font-size: 2.5rem; }
 }
