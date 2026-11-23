@@ -6,13 +6,16 @@ use App\Models\Appello;
 use App\Models\Configurazione;
 use App\Models\Insegnamento;
 use App\Models\Sessione;
+use App\Models\User;
 use App\Services\ConflittoService;
+use App\Support\CalendarioEsami;
 use App\Support\CalendarioFestivita;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class AppelloController extends Controller
 {
@@ -86,23 +89,13 @@ class AppelloController extends Controller
     public function store(Request $request, ConflittoService $conflitti)
     {
         $user = $request->user();
-        $dati = $this->validateRequest($request, $user);
-
-        if ($errore = $this->violazioneGiorno($dati['data'])) {
-            return back()->withInput()->withErrors($errore);
-        }
-
-        $sessione = Sessione::findOrFail($dati['sessione_id']);
-
-        if ($errore = $this->violazioniSessione($sessione, $dati['data'], $user)) {
-            return back()->withInput()->withErrors($errore);
-        }
+        $dati = $this->validateRequest($request);
 
         $insegnamento = Insegnamento::with('corsoStudio')->findOrFail($dati['insegnamento_id']);
         $aula = $dati['aula'] ?? null;
 
         $trovati = $conflitti->trovaConflitti(
-            $insegnamento->id, $dati['data'], $dati['ora_inizio'], $dati['ora_fine'], $aula
+            $insegnamento, $dati['data'], $dati['ora_inizio'], $dati['ora_fine'], $aula
         );
 
         if ($trovati->isNotEmpty() && $this->modalitaConflitto() === 'blocco') {
@@ -139,24 +132,13 @@ class AppelloController extends Controller
     {
         $user = $request->user();
         $this->autorizza($user, $appello);
-
-        $dati = $this->validateRequest($request, $user);
-
-        if ($errore = $this->violazioneGiorno($dati['data'])) {
-            return back()->withInput()->withErrors($errore);
-        }
-
-        $sessione = Sessione::findOrFail($dati['sessione_id']);
-
-        if ($errore = $this->violazioniSessione($sessione, $dati['data'], $user)) {
-            return back()->withInput()->withErrors($errore);
-        }
+        $dati = $this->validateRequest($request, $appello);
 
         $insegnamento = Insegnamento::with('corsoStudio')->findOrFail($dati['insegnamento_id']);
         $aula = $dati['aula'] ?? null;
 
         $trovati = $conflitti->trovaConflitti(
-            $insegnamento->id, $dati['data'], $dati['ora_inizio'], $dati['ora_fine'], $aula, $appello->id
+            $insegnamento, $dati['data'], $dati['ora_inizio'], $dati['ora_fine'], $aula, $appello->id
         );
 
         if ($trovati->isNotEmpty() && $this->modalitaConflitto() === 'blocco') {
@@ -175,37 +157,12 @@ class AppelloController extends Controller
      */
     public function verificaConflitto(Request $request, ConflittoService $conflitti)
     {
-        // Solo gli insegnamenti consentiti all'utente (come per store/update):
-        // evita che un docente sondi i conflitti di insegnamenti non suoi.
-        $insegnamentiPermessi = $this->insegnamentiDisponibili($request->user())->pluck('id')->all();
-
-        $dati = $request->validate([
-            'insegnamento_id' => ['required', 'integer', Rule::in($insegnamentiPermessi)],
-            'data' => ['bail', 'required', 'date_format:Y-m-d'],
-            'ora_inizio' => ['bail', 'required', 'date_format:H:i', 'after_or_equal:08:00'],
-            'ora_fine' => ['bail', 'required', 'date_format:H:i', 'before_or_equal:18:00', $this->fineSuccessiva($request)],
-            'aula' => ['nullable', 'string', 'max:255'],
-            'appello_id' => ['bail', 'nullable', 'integer', Rule::in(($request->user()->hasRole('amministratore') ? Appello::query() : Appello::visibiliAlDocente($request->user()))->pluck('id')->all())],
-        ], [
-            'ora_inizio.after_or_equal' => 'Un appello non può iniziare prima delle 08:00.',
-            'ora_fine.before_or_equal' => 'Un appello non può terminare dopo le 18:00.',
-        ], [
-            'insegnamento_id' => 'insegnamento',
-            'ora_inizio' => 'ora di inizio',
-            'ora_fine' => 'ora di fine',
-            'appello_id' => 'appello da modificare',
-        ]);
-
-        $insegnamento = Insegnamento::with('corsoStudio')->find($dati['insegnamento_id']);
-
-        if ($insegnamento === null) {
-            return response()->json(['conflitto' => false, 'numero' => 0, 'dettagli' => []]);
-        }
-
+        $dati = $this->validateRequest($request, anteprima: true);
+        $insegnamento = Insegnamento::findOrFail($dati['insegnamento_id']);
         $aula = $dati['aula'] ?? null;
 
         $trovati = $conflitti->trovaConflitti(
-            $insegnamento->id,
+            $insegnamento,
             $dati['data'],
             $dati['ora_inizio'],
             $dati['ora_fine'],
@@ -310,21 +267,29 @@ class AppelloController extends Controller
     }
 
     /**
-     * Regole di validazione comuni a creazione e modifica.
+     * Regole di pianificazione comuni a creazione, modifica e anteprima.
      */
-    private function validateRequest(Request $request, $user): array
+    private function validateRequest(Request $request, ?Appello $appello = null, bool $anteprima = false): array
     {
+        $user = $request->user();
         $insegnamentiPermessi = $this->insegnamentiDisponibili($user)->pluck('id')->all();
 
-        return $request->validate([
+        $regole = [
             'insegnamento_id' => ['bail', 'required', 'integer', Rule::in($insegnamentiPermessi)],
             'sessione_id' => ['bail', 'required', 'integer', 'exists:sessioni,id'],
-            'data' => ['bail', 'required', 'date_format:Y-m-d', 'after_or_equal:today'],
+            'data' => ['bail', 'required', 'date_format:Y-m-d', 'after_or_equal:'.CalendarioEsami::oggi()->toDateString()],
             'ora_inizio' => ['bail', 'required', 'date_format:H:i', 'after_or_equal:08:00'],
             'ora_fine' => ['bail', 'required', 'date_format:H:i', 'before_or_equal:18:00', $this->fineSuccessiva($request)],
             'aula' => ['nullable', 'string', 'max:255'],
-            'note' => ['nullable', 'string', 'max:1000'],
-        ], [
+        ];
+
+        if ($anteprima) {
+            $regole['appello_id'] = ['nullable', 'integer'];
+        } else {
+            $regole['note'] = ['nullable', 'string', 'max:1000'];
+        }
+
+        $dati = $request->validate($regole, [
             'insegnamento_id.in' => 'Seleziona un insegnamento tra quelli a te assegnati.',
             'data.after_or_equal' => 'Non è possibile fissare un appello in una data già passata.',
             'ora_inizio.after_or_equal' => 'Un appello non può iniziare prima delle 08:00.',
@@ -334,7 +299,32 @@ class AppelloController extends Controller
             'sessione_id' => 'sessione',
             'ora_inizio' => 'ora di inizio',
             'ora_fine' => 'ora di fine',
+            'appello_id' => 'appello da modificare',
         ]);
+
+        if (isset($dati['appello_id'])) {
+            $appelliVisibili = $user->hasRole('amministratore') ? Appello::query() : Appello::visibiliAlDocente($user);
+            $appello = $appelliVisibili->find($dati['appello_id']);
+            if ($appello === null) {
+                throw ValidationException::withMessages([
+                    'appello_id' => 'Seleziona un appello che puoi modificare.',
+                ]);
+            }
+        }
+
+        if ($appello !== null && $this->finestraOrigineChiusa($user, $appello)) {
+            throw ValidationException::withMessages([
+                'sessione_id' => 'La finestra di inserimento della sessione di origine è chiusa.',
+            ]);
+        }
+
+        $sessione = Sessione::findOrFail($dati['sessione_id']);
+        $errore = $this->violazioneGiorno($dati['data']) ?? $this->violazioniSessione($sessione, $dati['data'], $user);
+        if ($errore !== null) {
+            throw ValidationException::withMessages($errore);
+        }
+
+        return $dati;
     }
 
     private function fineSuccessiva(Request $request): \Closure
@@ -396,7 +386,7 @@ class AppelloController extends Controller
      */
     private function festivita(): array
     {
-        $anno = (int) Carbon::today()->year;
+        $anno = CalendarioEsami::oggi()->year;
 
         return CalendarioFestivita::festivitaDellAnno($anno)
             + CalendarioFestivita::festivitaDellAnno($anno + 1)
@@ -417,7 +407,7 @@ class AppelloController extends Controller
             return $appelli->pluck('id');
         }
 
-        $oggi = Carbon::today();
+        $oggi = CalendarioEsami::oggi();
 
         return $appelli->filter(function (Appello $appello) use ($oggi) {
             return $appello->sessione !== null
@@ -432,7 +422,7 @@ class AppelloController extends Controller
      */
     private function finestraAperta(Sessione $sessione): bool
     {
-        $oggi = Carbon::today();
+        $oggi = CalendarioEsami::oggi();
 
         return $sessione->periodiInserimento()
             ->whereDate('data_inizio', '<=', $oggi)
@@ -448,16 +438,18 @@ class AppelloController extends Controller
      */
     private function bloccoFinestraChiusa($user, Appello $appello)
     {
-        if ($user->hasRole('amministratore')) {
-            return null;
-        }
-
-        if ($appello->sessione !== null && ! $this->finestraAperta($appello->sessione)) {
+        if ($this->finestraOrigineChiusa($user, $appello)) {
             return redirect()->route('appelli.index')->with('error',
                 'La finestra di inserimento per questa sessione è chiusa: non puoi più modificare o eliminare questo appello.');
         }
 
         return null;
+    }
+
+    private function finestraOrigineChiusa(User $user, Appello $appello): bool
+    {
+        return ! $user->hasRole('amministratore')
+            && ($appello->sessione === null || ! $this->finestraAperta($appello->sessione));
     }
 
     /**

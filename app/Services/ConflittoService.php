@@ -46,35 +46,24 @@ class ConflittoService
      * @return Collection<int, Appello>
      */
     public function trovaConflitti(
-        int $insegnamentoId,
+        Insegnamento $insegnamento,
         string $data,
         string $oraInizio,
         string $oraFine,
         ?string $aula = null,
         ?int $escludiId = null
     ): Collection {
-        $insegnamento = Insegnamento::find($insegnamentoId);
-
-        if ($insegnamento === null) {
-            return collect();
-        }
-
         $aula = $aula !== null ? trim($aula) : '';
 
-        return Appello::with(['insegnamento.corsoStudio', 'docente'])
+        return Appello::with(['insegnamento', 'docente'])
             ->whereDate('data', $data)
             ->when($escludiId !== null, fn ($q) => $q->where('id', '!=', $escludiId))
-            // Sovrapposizione delle fasce: inizio < fine_altro AND fine > inizio_altro
-            ->where('ora_inizio', '<', $oraFine)
-            ->where('ora_fine', '>', $oraInizio)
             ->orderBy('ora_inizio')
             ->get()
-            // La normalizzazione deve coincidere con elenco e calendario.
-            // LOWER/TRIM SQL dipendono da motore e collation (SQLite non
-            // converte le maiuscole accentate e TRIM non rimuove i tab).
-            ->filter(fn (Appello $altro) => ((int) $altro->insegnamento->anno_frequenza === (int) $insegnamento->anno_frequenza
+            ->filter(fn (Appello $altro) => $this->fasceSovrapposte($oraInizio, $oraFine, $altro->ora_inizio, $altro->ora_fine)
+                && (((int) $altro->insegnamento->anno_frequenza === (int) $insegnamento->anno_frequenza
                     && (int) $altro->insegnamento->corso_studio_id === (int) $insegnamento->corso_studio_id)
-                || ($aula !== '' && mb_strtolower(trim((string) $altro->aula)) === mb_strtolower($aula))
+                    || ($aula !== '' && mb_strtolower(trim((string) $altro->aula)) === mb_strtolower($aula)))
             )->values();
     }
 
@@ -125,12 +114,7 @@ class ConflittoService
             return false;
         }
 
-        $inizioA = mb_substr((string) $a->ora_inizio, 0, 5);
-        $fineA = mb_substr((string) $a->ora_fine, 0, 5);
-        $inizioB = mb_substr((string) $b->ora_inizio, 0, 5);
-        $fineB = mb_substr((string) $b->ora_fine, 0, 5);
-
-        if (! ($inizioA < $fineB && $fineA > $inizioB)) {
+        if (! $this->fasceSovrapposte($a->ora_inizio, $a->ora_fine, $b->ora_inizio, $b->ora_fine)) {
             return false;
         }
 
@@ -141,5 +125,18 @@ class ConflittoService
         $stessaAula = $aulaA !== '' && $aulaA === mb_strtolower(trim((string) $b->aula));
 
         return $stessiStudenti || $stessaAula;
+    }
+
+    private function fasceSovrapposte(string $inizioA, string $fineA, string $inizioB, string $fineB): bool
+    {
+        return $this->orarioConSecondi($inizioA) < $this->orarioConSecondi($fineB)
+            && $this->orarioConSecondi($fineA) > $this->orarioConSecondi($inizioB);
+    }
+
+    private function orarioConSecondi(string $ora): string
+    {
+        // SQLite può conservare entrambi i formati. Le fasce adiacenti
+        // rimangono distinte anche se solo uno degli orari include i secondi.
+        return strlen($ora) === 5 ? $ora.':00' : $ora;
     }
 }

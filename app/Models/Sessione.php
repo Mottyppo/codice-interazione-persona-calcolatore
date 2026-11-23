@@ -2,15 +2,16 @@
 
 namespace App\Models;
 
+use App\Support\CalendarioEsami;
+use Database\Factories\SessioneFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Carbon;
 
 class Sessione extends Model
 {
-    /** @use HasFactory<\Database\Factories\SessioneFactory> */
+    /** @use HasFactory<SessioneFactory> */
     use HasFactory;
 
     protected $table = 'sessioni';
@@ -42,7 +43,7 @@ class Sessione extends Model
      */
     public function scopeConFinestraAperta(Builder $query): Builder
     {
-        $oggi = Carbon::today();
+        $oggi = CalendarioEsami::oggi();
 
         return $query->whereHas('periodiInserimento', fn (Builder $q) => $q
             ->whereDate('data_inizio', '<=', $oggi)

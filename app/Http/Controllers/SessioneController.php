@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Configurazione;
 use App\Models\Sessione;
+use App\Support\CalendarioEsami;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
@@ -75,7 +76,7 @@ class SessioneController extends Controller
         // successivi non devono mai interpretare array o date malformate.
         $dati = $request->validate([
             'nome' => 'required|string|max:255',
-            'data_inizio' => ['bail', 'required', 'date_format:Y-m-d', 'after:today'],
+            'data_inizio' => ['bail', 'required', 'date_format:Y-m-d', 'after:'.CalendarioEsami::oggi()->toDateString()],
             'data_fine' => ['bail', 'required', 'date_format:Y-m-d'],
         ], [
             'data_inizio.after' => 'La sessione deve iniziare da domani in poi.',

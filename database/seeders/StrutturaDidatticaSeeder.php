@@ -9,9 +9,9 @@ use App\Models\Insegnamento;
 use App\Models\PeriodoInserimento;
 use App\Models\Sessione;
 use App\Models\User;
+use App\Support\CalendarioEsami;
 use App\Support\CalendarioFestivita;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Carbon;
 
 class StrutturaDidatticaSeeder extends Seeder
 {
@@ -75,22 +75,22 @@ class StrutturaDidatticaSeeder extends Seeder
         // la sessione inizia nel futuro e dura ben più di una settimana.
         $sessione = Sessione::create([
             'nome' => 'Sessione Estiva',
-            'data_inizio' => Carbon::today()->addDays(10),
-            'data_fine' => Carbon::today()->addDays(50),
+            'data_inizio' => CalendarioEsami::oggi()->addDays(10),
+            'data_fine' => CalendarioEsami::oggi()->addDays(50),
         ]);
         // La finestra precede la sessione ed è aperta oggi (così i docenti possono
         // inserire); chiude tra pochi giorni, e il monitoraggio la segnala "in scadenza".
         PeriodoInserimento::create([
             'sessione_id' => $sessione->id,
-            'data_inizio' => Carbon::today()->subDays(3),
-            'data_fine' => Carbon::today()->addDays(5),
+            'data_inizio' => CalendarioEsami::oggi()->subDays(3),
+            'data_fine' => CalendarioEsami::oggi()->addDays(5),
         ]);
 
         // Appelli di esempio: si parte da oggi + 20 giorni, spostandosi al primo
         // giorno feriale (gli appelli non possono cadere nel weekend o nelle festività).
         // Cade dentro la sessione (oggi+10 .. oggi+50) e gli orari stanno nella
         // fascia 08:00-18:00, quindi ogni appello è ri-salvabile dal form.
-        $giorno = Carbon::today()->addDays(20);
+        $giorno = CalendarioEsami::oggi()->addDays(20);
         while (! CalendarioFestivita::eLavorativo($giorno)) {
             $giorno->addDay();
         }

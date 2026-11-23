@@ -114,15 +114,6 @@ document.addEventListener('invalid', (event) => {
 }, true);
 document.addEventListener('input', onEdit);
 document.addEventListener('change', onEdit);
-document.addEventListener('field-validation-errors', (event) => {
-    Object.entries(event.detail || {}).forEach(([name, messages]) => {
-        const field = document.getElementById(name);
-        if (field?.matches(fieldSelector)) {
-            attempted.add(field);
-            showError(field, Array.isArray(messages) ? messages.join(' ') : String(messages));
-        }
-    });
-});
 
 function initializeValidation() {
     document.querySelectorAll('[data-time-after], [data-date-after-or-equal]').forEach((field) => {

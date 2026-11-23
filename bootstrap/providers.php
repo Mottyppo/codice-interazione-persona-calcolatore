@@ -1,7 +1,9 @@
 <?php
 
+use App\Providers\FortifyServiceProvider;
+use App\Providers\JetstreamServiceProvider;
+
 return [
-    App\Providers\AppServiceProvider::class,
-    App\Providers\FortifyServiceProvider::class,
-    App\Providers\JetstreamServiceProvider::class,
+    FortifyServiceProvider::class,
+    JetstreamServiceProvider::class,
 ];

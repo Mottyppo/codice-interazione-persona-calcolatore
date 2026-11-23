@@ -53,19 +53,21 @@ non solo sui suoi: altrimenti una doppia prenotazione d'aula sfuggirebbe.
 
 Il **calendario** mostra gli appelli di una sessione raggruppati per data, con
 la sessione selezionabile (di default la più recente). Vale la stessa
-differenziazione di visibilità dell'elenco, con i conflitti evidenziati.
+differenziazione di visibilità dell'elenco. Il calendario evidenzia anche i
+conflitti con appelli di altre sessioni, mostrando solo quelli della sessione selezionata.
 
 ## Vincoli su date e orari degli appelli
 
 Un appello **non può** essere fissato di **sabato o domenica**, né in un
 **giorno festivo** italiano. Le festività a data fissa sono elencate in
-`app/Support/CalendarioFestivita.php`, mentre il **Lunedì dell'Angelo** è
-calcolato ogni anno a partire dalla data della Pasqua (algoritmo di Gauss/Meeus).
+`app/Support/CalendarioFestivita.php`, incluso il **4 ottobre** dal 2026. Il **Lunedì dell'Angelo** è
+calcolato ogni anno a partire dalla data della Pasqua. Le date di pianificazione
+e le scadenze seguono il fuso `Europe/Rome`.
 
 L'appello deve inoltre svolgersi nella **fascia oraria 08:00–18:00**: l'ora di
 inizio non può precedere le 08:00 e l'ora di fine non può superare le 18:00.
 
-Entrambi i vincoli sono applicati **lato server** alla creazione e alla modifica,
+Entrambi i vincoli sono applicati **lato server** in anteprima, alla creazione e alla modifica,
 e valgono anche per l'amministratore. Il form li anticipa lato client: la data
 non valida viene segnalata appena scelta, mentre i campi orario sono limitati con
 gli attributi `min`/`max`.
@@ -96,13 +98,17 @@ stato della finestra di inserimento della sessione:
 - il **docente** vede i propri insegnamenti da pianificare finché la finestra è
   aperta, in scadenza o appena chiusa.
 
+Le finestre sovrapposte o consecutive contano come un periodo continuo.
+La scadenza coincide con l'ultimo giorno prima di un'interruzione.
+
 ## Finestre di inserimento e preappelli
 
 Ogni sessione ha una o più **finestre di inserimento**, cioè i periodi in cui i
 docenti possono creare, modificare ed eliminare gli appelli (l'amministratore
 non è soggetto a questo vincolo). Una finestra **può aprirsi anche prima**
 dell'inizio della sessione — così le date si pubblicano in anticipo — ma deve
-chiudersi entro la fine della sessione.
+chiudersi entro la fine della sessione. Per spostare un appello, il docente deve
+poter operare sia nella sessione di origine sia in quella di destinazione.
 
 La data di un appello deve cadere nel periodo della sessione, con un'eccezione:
 i **preappelli**. L'amministratore configura un margine (default **14 giorni**,

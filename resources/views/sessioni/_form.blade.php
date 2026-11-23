@@ -10,7 +10,7 @@
         <label for="data_inizio" class="ui-label">Data di inizio</label>
         <x-ui.input type="date" :invalid="$errors->has('data_inizio')" id="data_inizio" name="data_inizio" aria-describedby="data-inizio-help"
             value="{{ \App\Support\FormValue::old('data_inizio', $sessione->data_inizio?->format('Y-m-d')) }}"
-            min="{{ now()->addDay()->format('Y-m-d') }}" required />
+            min="{{ \App\Support\CalendarioEsami::oggi()->addDay()->toDateString() }}" required />
         <div id="data-inizio-help" class="ui-field-help">Deve iniziare da domani in poi.</div>
         <x-ui.field-error for="data_inizio" />
     </div>
@@ -19,7 +19,7 @@
         <label for="data_fine" class="ui-label">Data di fine</label>
         <x-ui.input type="date" :invalid="$errors->has('data_fine')" id="data_fine" name="data_fine" aria-describedby="data-fine-help"
             value="{{ \App\Support\FormValue::old('data_fine', $sessione->data_fine?->format('Y-m-d')) }}"
-            min="{{ now()->addDays(7)->format('Y-m-d') }}" required />
+            min="{{ \App\Support\CalendarioEsami::oggi()->addDays(7)->toDateString() }}" required />
         <div id="data-fine-help" class="ui-field-help">La sessione deve durare almeno una settimana.</div>
         <x-ui.field-error for="data_fine" />
     </div>
@@ -34,7 +34,7 @@
         const $fine = $('#data_fine');
 
         $inizio.on('change', function () {
-            const minimo = new Date((this.value || @json(now()->addDay()->format('Y-m-d'))) + 'T00:00:00Z');
+            const minimo = new Date((this.value || this.min) + 'T00:00:00Z');
             minimo.setUTCDate(minimo.getUTCDate() + 6);
             $fine.attr('min', minimo.toISOString().slice(0, 10));
             $fine[0].dispatchEvent(new Event('change', { bubbles: true }));

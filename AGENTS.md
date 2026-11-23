@@ -71,7 +71,7 @@ Fonti: [rotte web](/Users/mottyppo/Desktop/codice-interazione-persona-calcolator
 
 Due intervalli adiacenti, ad esempio 09:00–11:00 e 11:00–13:00, non si sovrappongono. Gli spazi interni al nome dell’aula non vengono rimossi. Se l’aula non è specificata, non genera conflitti di aula. Non esiste un controllo autonomo sulla contemporanea presenza dello stesso docente in esami diversi.
 
-Il controllo al salvataggio considera gli appelli anche di sessioni differenti. In modalità `blocco` il conflitto impedisce il salvataggio; in modalità `warning` l’appello viene salvato con una segnalazione. La dashboard e l’elenco del docente confrontano i suoi appelli con l’insieme completo; il calendario calcola invece i conflitti fra gli appelli della sola sessione visualizzata.
+Il controllo al salvataggio considera gli appelli anche di sessioni differenti. In modalità `blocco` il conflitto impedisce il salvataggio; in modalità `warning` l’appello viene salvato con una segnalazione. La dashboard, l’elenco e il calendario evidenziano anche le sovrapposizioni con appelli di altre sessioni. Il calendario mostra le righe della sessione selezionata.
 
 Fonti: [validazione e vincoli degli appelli](/Users/mottyppo/Desktop/codice-interazione-persona-calcolatore/app/Http/Controllers/AppelloController.php:301), [ConflittoService](/Users/mottyppo/Desktop/codice-interazione-persona-calcolatore/app/Services/ConflittoService.php), [SessioneController](/Users/mottyppo/Desktop/codice-interazione-persona-calcolatore/app/Http/Controllers/SessioneController.php:71), [PeriodoInserimentoController](/Users/mottyppo/Desktop/codice-interazione-persona-calcolatore/app/Http/Controllers/PeriodoInserimentoController.php:14), [festività codificate](/Users/mottyppo/Desktop/codice-interazione-persona-calcolatore/app/Support/CalendarioFestivita.php).
 
@@ -122,7 +122,7 @@ Fonte: [RolesAndPermissionsSeeder](/Users/mottyppo/Desktop/codice-interazione-pe
 | Importare CSV | Consentito | Non consentito |
 | Modificare configurazione | Consentito | Non consentito |
 | Creare appelli | Su qualunque insegnamento | Solo sugli insegnamenti assegnati e con finestra della sessione aperta |
-| Modificare appelli | Tutti | Solo degli insegnamenti attualmente assegnati, con controllo sulla finestra della sessione indicata nella richiesta |
+| Modificare appelli | Tutti | Solo degli insegnamenti attualmente assegnati, con finestre aperte nella sessione di origine e in quella di destinazione |
 | Eliminare appelli | Tutti, anche a finestra chiusa | Solo degli insegnamenti assegnati e con finestra della sessione corrente aperta |
 | Consultare elenco appelli | Tutti | Solo degli insegnamenti attualmente assegnati |
 | Consultare calendario | Tutti i dettagli previsti dalla vista | Dettagli degli insegnamenti assegnati e degli appelli di cui è autore; dati ridotti degli altri |

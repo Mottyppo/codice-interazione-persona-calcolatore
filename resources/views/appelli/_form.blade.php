@@ -37,7 +37,7 @@
 
     <div class="ui-col-md-4">
         <label for="data" class="ui-label">Data</label>
-        <x-ui.input type="date" :invalid="$errors->has('data')" id="data" name="data" min="{{ now()->format('Y-m-d') }}" aria-describedby="avviso-data{{ ($giorniPreappello ?? 0) > 0 ? ' data-help' : '' }}"
+        <x-ui.input type="date" :invalid="$errors->has('data')" id="data" name="data" min="{{ \App\Support\CalendarioEsami::oggi()->toDateString() }}" aria-describedby="avviso-data{{ ($giorniPreappello ?? 0) > 0 ? ' data-help' : '' }}"
             value="{{ \App\Support\FormValue::old('data', $appello->data?->format('Y-m-d')) }}" required />
         <x-ui.field-error for="data" />
         @if (($giorniPreappello ?? 0) > 0)
@@ -91,7 +91,7 @@
     $(function () {
         const url = "{{ route('appelli.verifica-conflitto') }}";
         const $box = $('#avviso-conflitto');
-        const $campi = $('#insegnamento_id, #data, #ora_inizio, #ora_fine, #aula');
+        const $campi = $('#insegnamento_id, #sessione_id, #data, #ora_inizio, #ora_fine, #aula');
         let richiesta = null;
         let versioneRichiesta = 0;
 
@@ -115,19 +115,21 @@
             if (richiesta) richiesta.abort();
             $box.empty();
             const insegnamento = $('#insegnamento_id').val();
+            const sessione = $('#sessione_id').val();
             const data = $('#data').val();
             const oraInizio = $('#ora_inizio').val();
             const oraFine = $('#ora_fine').val();
 
             // Serve tutto compilato e una fascia coerente
-            if (!insegnamento || !data || !oraInizio || !oraFine || oraFine <= oraInizio
+            if (!insegnamento || !sessione || !data || !oraInizio || !oraFine || oraFine <= oraInizio
+                || $avvisoData.children().length
                 || !$('#data')[0].validity.valid || !$('#ora_inizio')[0].validity.valid || !$('#ora_fine')[0].validity.valid) {
-                $box.empty();
                 return;
             }
 
             richiesta = $.getJSON(url, {
                 insegnamento_id: insegnamento,
+                sessione_id: sessione,
                 data: data,
                 ora_inizio: oraInizio,
                 ora_fine: oraFine,
@@ -160,7 +162,9 @@
             }).fail(function (xhr, stato) {
                 if (stato === 'abort' || versione !== versioneRichiesta) return;
                 if (xhr.status === 422 && xhr.responseJSON?.errors) {
-                    document.dispatchEvent(new CustomEvent('field-validation-errors', { detail: xhr.responseJSON.errors }));
+                    const messaggi = Object.values(xhr.responseJSON.errors).flat().join(' ');
+                    $box.html('<div class="ui-alert ui-alert-warning mb-0 py-2">' + testoSicuro(messaggi) + '</div>');
+                    return;
                 }
                 verificaNonDisponibile();
             });

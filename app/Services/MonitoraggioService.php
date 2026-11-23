@@ -5,7 +5,7 @@ namespace App\Services;
 use App\Models\Insegnamento;
 use App\Models\Sessione;
 use App\Models\User;
-use Illuminate\Support\Carbon;
+use App\Support\CalendarioEsami;
 use Illuminate\Support\Collection;
 
 /**
@@ -27,7 +27,7 @@ class MonitoraggioService
     public function sessioniDaMonitorare(): Collection
     {
         return Sessione::with('periodiInserimento')
-            ->whereDate('data_fine', '>=', Carbon::today())
+            ->whereDate('data_fine', '>=', CalendarioEsami::oggi())
             ->orderBy('data_inizio')
             ->get();
     }
@@ -35,28 +35,37 @@ class MonitoraggioService
     /**
      * Stato della finestra di inserimento di una sessione.
      *
-     * @return string  non_definita | non_aperta | aperta | in_scadenza | chiusa
+     * @return string non_definita | non_aperta | aperta | in_scadenza | chiusa
      */
     public function statoFinestra(Sessione $sessione): string
     {
-        $oggi = Carbon::today();
+        $oggi = CalendarioEsami::oggi();
         $periodi = $sessione->periodiInserimento;
 
         if ($periodi->isEmpty()) {
             return 'non_definita';
         }
 
-        $aperto = $periodi->first(fn ($p) => $oggi->between($p->data_inizio, $p->data_fine));
+        $periodiUtili = $periodi->filter(fn ($periodo) => $periodo->data_fine->gte($oggi))->sortBy('data_inizio');
+        $fineApertura = null;
 
-        if ($aperto !== null) {
-            return $oggi->diffInDays($aperto->data_fine) <= self::GIORNI_SCADENZA ? 'in_scadenza' : 'aperta';
+        // Gli estremi sono inclusi. Una finestra che apre il giorno seguente
+        // alla chiusura estende l'apertura senza interromperla.
+        foreach ($periodiUtili as $periodo) {
+            $limiteInizio = $fineApertura === null ? $oggi : $fineApertura->copy()->addDay();
+            if ($periodo->data_inizio->gt($limiteInizio)) {
+                break;
+            }
+            if ($fineApertura === null || $periodo->data_fine->gt($fineApertura)) {
+                $fineApertura = $periodo->data_fine;
+            }
         }
 
-        // Nessun periodo aperto oggi: "non ancora aperta" se ne esiste uno futuro,
-        // altrimenti la finestra è "chiusa".
-        $aperturaFutura = $periodi->contains(fn ($p) => $p->data_inizio->gt($oggi));
+        if ($fineApertura !== null) {
+            return $oggi->diffInDays($fineApertura) <= self::GIORNI_SCADENZA ? 'in_scadenza' : 'aperta';
+        }
 
-        return $aperturaFutura ? 'non_aperta' : 'chiusa';
+        return $periodiUtili->isEmpty() ? 'chiusa' : 'non_aperta';
     }
 
     /**

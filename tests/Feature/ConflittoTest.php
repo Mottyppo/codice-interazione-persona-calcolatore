@@ -85,6 +85,7 @@ class ConflittoTest extends TestCase
     public function test_endpoint_rileva_conflitto_stesso_anno_fascia_sovrapposta(): void
     {
         $response = $this->actingAs($this->docente)->getJson(route('appelli.verifica-conflitto', [
+            'sessione_id' => $this->sessione->id,
             'insegnamento_id' => $this->insegnamentoA->id,
             'data' => $this->giorno,
             'ora_inizio' => '11:00',
@@ -97,6 +98,7 @@ class ConflittoTest extends TestCase
     public function test_endpoint_nessun_conflitto_con_fascia_non_sovrapposta(): void
     {
         $response = $this->actingAs($this->docente)->getJson(route('appelli.verifica-conflitto', [
+            'sessione_id' => $this->sessione->id,
             'insegnamento_id' => $this->insegnamentoA->id,
             'data' => $this->giorno,
             'ora_inizio' => '12:00',
@@ -116,6 +118,7 @@ class ConflittoTest extends TestCase
         $this->docente->insegnamenti()->attach($insAltroCorso->id);
 
         $response = $this->actingAs($this->docente)->getJson(route('appelli.verifica-conflitto', [
+            'sessione_id' => $this->sessione->id,
             'insegnamento_id' => $insAltroCorso->id,
             'data' => $this->giorno,
             'ora_inizio' => '11:00',
@@ -128,6 +131,7 @@ class ConflittoTest extends TestCase
     public function test_endpoint_nessun_conflitto_tra_anni_diversi(): void
     {
         $response = $this->actingAs($this->docente)->getJson(route('appelli.verifica-conflitto', [
+            'sessione_id' => $this->sessione->id,
             'insegnamento_id' => $this->insegnamentoC->id, // anno 1
             'data' => $this->giorno,
             'ora_inizio' => '11:00',
@@ -140,6 +144,7 @@ class ConflittoTest extends TestCase
     public function test_il_docente_non_vede_i_dettagli_del_conflitto(): void
     {
         $response = $this->actingAs($this->docente)->getJson(route('appelli.verifica-conflitto', [
+            'sessione_id' => $this->sessione->id,
             'insegnamento_id' => $this->insegnamentoA->id,
             'data' => $this->giorno,
             'ora_inizio' => '11:00',
@@ -159,6 +164,7 @@ class ConflittoTest extends TestCase
         $admin->assignRole('amministratore');
 
         $dettaglio = $this->actingAs($admin)->getJson(route('appelli.verifica-conflitto', [
+            'sessione_id' => $this->sessione->id,
             'insegnamento_id' => $this->insegnamentoA->id,
             'data' => $this->giorno,
             'ora_inizio' => '11:00',
@@ -187,6 +193,7 @@ class ConflittoTest extends TestCase
         // Nuovo appello: corso e anno diversi (nessun conflitto studenti), ma
         // stessa aula e fascia sovrapposta. Il confronto ignora spazi e maiuscole.
         $response = $this->actingAs($this->docente)->getJson(route('appelli.verifica-conflitto', [
+            'sessione_id' => $this->sessione->id,
             'insegnamento_id' => $this->insegnamentoC->id, // anno 1, corso Informatica
             'data' => $this->giorno,
             'ora_inizio' => '11:00',
@@ -213,6 +220,7 @@ class ConflittoTest extends TestCase
         ]);
 
         $response = $this->actingAs($this->docente)->getJson(route('appelli.verifica-conflitto', [
+            'sessione_id' => $this->sessione->id,
             'insegnamento_id' => $this->insegnamentoC->id, // anno 1, altro corso/anno
             'data' => $this->giorno,
             'ora_inizio' => '11:00',
@@ -260,6 +268,7 @@ class ConflittoTest extends TestCase
         // Volutamente NON assegnato al docente
 
         $response = $this->actingAs($this->docente)->getJson(route('appelli.verifica-conflitto', [
+            'sessione_id' => $this->sessione->id,
             'insegnamento_id' => $insNonSuo->id,
             'data' => $this->giorno,
             'ora_inizio' => '11:00',

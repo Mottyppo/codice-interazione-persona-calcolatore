@@ -38,8 +38,16 @@ class CalendarioController extends Controller
                 ->orderBy('data')->orderBy('ora_inizio')
                 ->get();
 
-            $idConflitto = $conflitti->idInConflitto($appelli);
-            $perData = $appelli->groupBy(fn (Appello $a) => $a->data->format('Y-m-d'));
+            if ($appelli->isNotEmpty()) {
+                $appelliEsterni = Appello::with('insegnamento')
+                    ->where('sessione_id', '!=', $sessioneSelezionata->id)
+                    ->whereDate('data', '>=', $appelli->first()->data)
+                    ->whereDate('data', '<=', $appelli->last()->data)
+                    ->get();
+
+                $idConflitto = $conflitti->idInConflitto($appelli, $appelli->concat($appelliEsterni));
+                $perData = $appelli->groupBy(fn (Appello $a) => $a->data->toDateString());
+            }
         }
 
         // Insegnamenti del docente: gli appelli ad essi collegati (anche di un

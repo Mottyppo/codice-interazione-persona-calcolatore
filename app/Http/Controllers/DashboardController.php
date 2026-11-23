@@ -8,8 +8,8 @@ use App\Models\Insegnamento;
 use App\Models\Sessione;
 use App\Services\ConflittoService;
 use App\Services\MonitoraggioService;
+use App\Support\CalendarioEsami;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 
 class DashboardController extends Controller
 {
@@ -19,6 +19,7 @@ class DashboardController extends Controller
     public function index(Request $request, MonitoraggioService $monitoraggio, ConflittoService $conflitti)
     {
         $user = $request->user();
+        $oggi = CalendarioEsami::oggi();
 
         // Dati per l'amministratore: visione complessiva della struttura
         if ($user->hasRole('amministratore')) {
@@ -32,7 +33,7 @@ class DashboardController extends Controller
             // Appelli futuri: base per i prossimi appelli e per la rilevazione
             // dei conflitti (che riguardano sempre appelli nella stessa data).
             $appelliFuturi = Appello::with(['insegnamento.corsoStudio', 'docente'])
-                ->whereDate('data', '>=', Carbon::today())
+                ->whereDate('data', '>=', $oggi)
                 ->orderBy('data')
                 ->orderBy('ora_inizio')
                 ->get();
@@ -55,7 +56,7 @@ class DashboardController extends Controller
 
         $mieiAppelli = Appello::with('insegnamento.corsoStudio')
             ->visibiliAlDocente($user)
-            ->whereDate('data', '>=', Carbon::today())
+            ->whereDate('data', '>=', $oggi)
             ->orderBy('data')
             ->orderBy('ora_inizio')
             ->take(5)
@@ -64,7 +65,7 @@ class DashboardController extends Controller
         // I conflitti vanno cercati contro tutti gli appelli futuri, non solo i
         // propri: un appello può confliggere con quello di un altro docente.
         $universo = Appello::with('insegnamento')
-            ->whereDate('data', '>=', Carbon::today())
+            ->whereDate('data', '>=', $oggi)
             ->get();
 
         return view('dashboard', [

@@ -42,6 +42,11 @@ class CalendarioFestivita
             $feste["{$anno}-{$meseGiorno}"] = $nome;
         }
 
+        // Legge 8 ottobre 2025, n. 151, in vigore dal 1° gennaio 2026.
+        if ($anno >= 2026) {
+            $feste["{$anno}-10-04"] = 'San Francesco d’Assisi';
+        }
+
         $feste[self::pasqua($anno)->addDay()->format('Y-m-d')] = 'Lunedì dell\'Angelo';
 
         return $feste;
@@ -53,18 +58,7 @@ class CalendarioFestivita
      */
     public static function nomeFestivita(Carbon $data): ?string
     {
-        $chiave = $data->format('m-d');
-
-        if (isset(self::FESTE_FISSE[$chiave])) {
-            return self::FESTE_FISSE[$chiave];
-        }
-
-        // Lunedì dell'Angelo (Pasquetta): il giorno dopo la Pasqua
-        if ($data->isSameDay(self::pasqua($data->year)->addDay())) {
-            return 'Lunedì dell\'Angelo';
-        }
-
-        return null;
+        return self::festivitaDellAnno($data->year)[$data->toDateString()] ?? null;
     }
 
     /**
