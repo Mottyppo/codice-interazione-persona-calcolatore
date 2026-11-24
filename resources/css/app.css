@@ -78,6 +78,121 @@
     background: radial-gradient(ellipse at var(--dot-focus-position, 50% 20%), var(--background) 0%, color-mix(in oklch, var(--background) 90%, transparent) 24%, transparent 65%);
   }
 
+  .landing-wrap { width: min(100% - 3rem, 76rem); margin-inline: auto; }
+  .landing-header { @apply absolute inset-x-0 top-0 z-10 border-b border-border bg-background; }
+  .landing-brand { @apply inline-flex min-h-11 items-center gap-2.5 text-sm font-semibold text-foreground sm:text-base; }
+  .landing-page .landing-action { @apply inline-flex min-h-11 shrink-0 items-center justify-center gap-2 px-4 text-sm font-semibold; }
+  .landing-page a:focus-visible { outline: 2px solid var(--accent-foreground); outline-offset: 3px; box-shadow: none; }
+  .landing-action:hover { transform: translateY(-2px); }
+  .landing-action:active { transform: translateY(0); }
+  .landing-skip { @apply sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-3 focus:z-10 focus:rounded-md focus:bg-card focus:px-4 focus:py-3; }
+  .landing-hero {
+    min-height: 100svh;
+    padding-block: calc(4.5rem + clamp(2rem, 5.2vh, 4.75rem)) 3rem;
+  }
+  .landing-intro { @apply mx-auto max-w-4xl text-center; }
+  .landing-intro h1 {
+    font-size: clamp(2.25rem, 5.7vw, 4.75rem);
+    font-weight: 700;
+    letter-spacing: -.055em;
+    line-height: 1.04;
+    text-wrap: balance;
+  }
+  .landing-intro p {
+    max-width: 36rem;
+    margin: 1.125rem auto 1.5rem;
+    color: var(--secondary-foreground);
+    font-size: clamp(1rem, 1.5vw, 1.125rem);
+    line-height: 1.55;
+    text-wrap: pretty;
+  }
+  .landing-page .landing-intro .landing-action { @apply min-h-12 px-6; }
+  .landing-preview {
+    @apply mx-auto mt-9 max-w-4xl overflow-hidden border border-border bg-card text-card-foreground sm:mt-11;
+    border-radius: 1rem;
+    box-shadow: 0 18px 38px -24px color-mix(in oklch, var(--foreground) 48%, transparent), var(--shadow-sm);
+  }
+  .landing-preview-header { @apply flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-border bg-muted px-4 py-3 sm:px-6; }
+  .landing-preview-body { @apply p-4 sm:px-6 sm:py-5; }
+  .landing-agenda { @apply overflow-hidden rounded-lg border border-border; }
+  .landing-agenda-day { @apply bg-muted px-3 py-1.5 text-sm font-semibold text-secondary-foreground sm:px-4; }
+  .landing-agenda-day:not(:first-child) { @apply border-t border-border; }
+  .landing-agenda-list > li {
+    @apply grid items-center gap-x-3 gap-y-1 border-t border-border px-3 py-2.5 text-sm sm:px-4;
+    grid-template-columns: 7rem minmax(0, 1fr) minmax(7rem, .6fr) 6rem;
+  }
+  .landing-agenda-time { @apply whitespace-nowrap font-medium tabular-nums text-secondary-foreground; }
+  .landing-subject { @apply min-w-0 font-medium; }
+  .landing-room { @apply text-sm text-secondary-foreground; }
+  .landing-agenda-list .ui-badge { justify-self: end; }
+  .landing-agenda-conflict { background: var(--danger-surface); }
+  .landing-features { @apply bg-accent py-16 sm:py-24 lg:py-32; }
+  .landing-features h2 {
+    max-width: 36rem;
+    font-size: clamp(1.75rem, 4.5vw, 3.75rem);
+    line-height: 1.08;
+    font-weight: 650;
+    letter-spacing: -.04em;
+    text-wrap: balance;
+  }
+  .landing-features h2 span {
+    position: relative;
+    isolation: isolate;
+    display: inline-block;
+    color: var(--accent-foreground);
+  }
+  .landing-features h2 span::after {
+    position: absolute;
+    z-index: -1;
+    inset: auto 0 .02em;
+    height: .23em;
+    background: color-mix(in oklch, var(--primary) 28%, transparent);
+    content: '';
+    transform-origin: left;
+  }
+  .landing-feature-grid { @apply mt-10 grid gap-4 md:grid-cols-3 md:gap-5; }
+  .landing-feature { @apply flex flex-col rounded-xl border border-border bg-card p-6 text-card-foreground lg:p-8; }
+  .landing-feature-icon { @apply mb-6 grid size-11 place-items-center rounded-lg bg-accent text-xl text-accent-foreground; }
+  .landing-feature h3 { @apply mb-2 text-xl font-semibold leading-snug; }
+  .landing-feature p { @apply mb-5 leading-relaxed text-secondary-foreground; }
+  .landing-feature-demo { @apply mt-auto grid min-h-28 content-center gap-1.5 rounded-md border border-border bg-muted px-4 py-3 text-sm text-secondary-foreground; }
+  .landing-feature-demo dl > div { @apply flex flex-wrap justify-between gap-x-3; }
+  .landing-feature-demo dd, .landing-feature-demo strong { @apply font-semibold text-foreground; }
+  .landing-features .landing-action { @apply mt-8; }
+
+  @media (max-width: 639px) {
+    .landing-wrap { width: calc(100% - 2rem); }
+    .landing-hero { padding-block: 6.25rem 2rem; }
+    .landing-intro p { margin-block: 1rem 1.25rem; }
+    .landing-preview { margin-top: 1.75rem; }
+    .landing-agenda-list > li { grid-template-columns: 5.25rem minmax(0, 1fr); }
+    .landing-agenda-list .ui-badge, .landing-room { grid-column: 2; justify-self: start; }
+  }
+  @media (min-width: 1024px) {
+    .landing-features { min-height: 100svh; }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .landing-action { transition: background-color .18s ease, transform .18s ease; }
+    .m-enter .landing-hero[data-enter] .landing-intro { animation: landing-enter .45s ease-out both; }
+    .m-enter .landing-hero[data-enter] .landing-preview { animation: landing-enter .55s .08s ease-out both; }
+    @supports (animation-timeline: view()) {
+      .landing-features h2 span { view-timeline-name: --landing-heading; }
+      .landing-features h2 span::after {
+        animation: landing-highlight linear both;
+        animation-timeline: --landing-heading;
+        animation-range: entry 20% cover 35%;
+      }
+    }
+  }
+  @keyframes landing-enter {
+    from { opacity: .65; transform: translateY(.75rem); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes landing-highlight {
+    from { transform: scaleX(0); }
+    to { transform: scaleX(1); }
+  }
+
   /* Keep the existing application geometry independent of Jetstream's breakpoints. */
   .app-viewport { scrollbar-gutter: stable; }
   .app-shell { @apply flex min-h-screen flex-col bg-muted; font-size: 1rem; line-height: 1.5; }
